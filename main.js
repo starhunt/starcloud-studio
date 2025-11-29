@@ -365,11 +365,14 @@ ${content}` }
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
+        // System instruction separated properly for Gemini API
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
         contents: [{
+          role: "user",
           parts: [{
-            text: `${SYSTEM_PROMPT}
-
-Create an image prompt for the following content:
+            text: `Create an image prompt for the following content:
 
 ${content}`
           }]

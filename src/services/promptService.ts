@@ -97,9 +97,14 @@ export class PromptService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        // System instruction separated properly for Gemini API
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
         contents: [{
+          role: 'user',
           parts: [{
-            text: `${SYSTEM_PROMPT}\n\nCreate an image prompt for the following content:\n\n${content}`
+            text: `Create an image prompt for the following content:\n\n${content}`
           }]
         }],
         generationConfig: {
