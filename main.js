@@ -42,6 +42,7 @@ var DEFAULT_SETTINGS = {
   // Image Generation
   imageModel: "gemini-3-pro-image-preview",
   imageStyle: "infographic",
+  preferredLanguage: "ko",
   // UX Settings
   showPreviewBeforeGeneration: true,
   attachmentFolder: "999-Attachments",
@@ -216,6 +217,20 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
         "timeline": "\u{1F4C5} Timeline - Progression and milestones"
       }).setValue(this.plugin.settings.imageStyle).onChange(async (value) => {
         this.plugin.settings.imageStyle = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Preferred Language").setDesc("Language for text in generated images (e.g., titles, labels, descriptions).").addDropdown(
+      (dropdown) => dropdown.addOptions({
+        "ko": "\u{1F1F0}\u{1F1F7} \uD55C\uAD6D\uC5B4 (Korean)",
+        "en": "\u{1F1FA}\u{1F1F8} English",
+        "ja": "\u{1F1EF}\u{1F1F5} \u65E5\u672C\u8A9E (Japanese)",
+        "zh": "\u{1F1E8}\u{1F1F3} \u4E2D\u6587 (Chinese)",
+        "es": "\u{1F1EA}\u{1F1F8} Espa\xF1ol (Spanish)",
+        "fr": "\u{1F1EB}\u{1F1F7} Fran\xE7ais (French)",
+        "de": "\u{1F1E9}\u{1F1EA} Deutsch (German)"
+      }).setValue(this.plugin.settings.preferredLanguage).onChange(async (value) => {
+        this.plugin.settings.preferredLanguage = value;
         await this.plugin.saveSettings();
       })
     );
@@ -455,7 +470,7 @@ var ImageService = class {
   /**
    * Generate an infographic image using Google Gemini
    */
-  async generateImage(prompt, apiKey, model, style) {
+  async generateImage(prompt, apiKey, model, style, preferredLanguage) {
     if (!apiKey) {
       throw this.createError("INVALID_API_KEY", "Google API key is not configured");
     }
@@ -463,7 +478,16 @@ var ImageService = class {
       throw this.createError("NO_CONTENT", "Prompt is empty");
     }
     try {
-      const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE.replace("{style}", IMAGE_STYLES[style]).replace("{prompt}", prompt);
+      const languageInstructions = {
+        ko: "IMPORTANT: All text in the image MUST be in Korean (\uD55C\uAD6D\uC5B4). Titles, labels, descriptions, and all content should be written in Korean.",
+        en: "IMPORTANT: All text in the image MUST be in English. Titles, labels, descriptions, and all content should be written in English.",
+        ja: "IMPORTANT: All text in the image MUST be in Japanese (\u65E5\u672C\u8A9E). Titles, labels, descriptions, and all content should be written in Japanese.",
+        zh: "IMPORTANT: All text in the image MUST be in Chinese (\u4E2D\u6587). Titles, labels, descriptions, and all content should be written in Chinese.",
+        es: "IMPORTANT: All text in the image MUST be in Spanish (Espa\xF1ol). Titles, labels, descriptions, and all content should be written in Spanish.",
+        fr: "IMPORTANT: All text in the image MUST be in French (Fran\xE7ais). Titles, labels, descriptions, and all content should be written in French.",
+        de: "IMPORTANT: All text in the image MUST be in German (Deutsch). Titles, labels, descriptions, and all content should be written in German."
+      };
+      const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE.replace("{style}", IMAGE_STYLES[style]).replace("{prompt}", prompt) + "\n\n" + languageInstructions[preferredLanguage];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await (0, import_obsidian3.requestUrl)({
         url,
@@ -1073,7 +1097,8 @@ ${finalPrompt}`;
           finalPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
       this.updateProgress(progressModal, {
@@ -1188,7 +1213,8 @@ ${finalPrompt}`;
           this.lastPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
       this.updateProgress(progressModal, {

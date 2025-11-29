@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: NanoBananaSettings = {
   // Image Generation
   imageModel: 'gemini-3-pro-image-preview',
   imageStyle: 'infographic',
+  preferredLanguage: 'ko',
 
   // UX Settings
   showPreviewBeforeGeneration: true,

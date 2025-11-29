@@ -3,6 +3,8 @@ export type AIProvider = 'openai' | 'google' | 'anthropic' | 'xai';
 
 export type ImageStyle = 'infographic' | 'poster' | 'diagram' | 'mindmap' | 'timeline';
 
+export type PreferredLanguage = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'fr' | 'de';
+
 // Plugin settings interface
 export interface NanoBananaSettings {
   // API Keys
@@ -18,6 +20,7 @@ export interface NanoBananaSettings {
   // Image Generation
   imageModel: string;
   imageStyle: ImageStyle;
+  preferredLanguage: PreferredLanguage;
 
   // UX Settings
   showPreviewBeforeGeneration: boolean;
@@ -125,4 +128,14 @@ export const IMAGE_STYLES: Record<ImageStyle, string> = {
   diagram: 'Technical diagram with clear connections and labels',
   mindmap: 'Mind map style with central concept and branches',
   timeline: 'Timeline format showing progression and milestones'
+};
+
+export const LANGUAGE_NAMES: Record<PreferredLanguage, string> = {
+  ko: '한국어 (Korean)',
+  en: 'English',
+  ja: '日本語 (Japanese)',
+  zh: '中文 (Chinese)',
+  es: 'Español (Spanish)',
+  fr: 'Français (French)',
+  de: 'Deutsch (German)'
 };

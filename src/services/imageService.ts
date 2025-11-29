@@ -1,5 +1,5 @@
 import { requestUrl } from 'obsidian';
-import { ImageGenerationResult, GenerationError, ImageStyle, IMAGE_STYLES } from '../types';
+import { ImageGenerationResult, GenerationError, ImageStyle, PreferredLanguage, IMAGE_STYLES, LANGUAGE_NAMES } from '../types';
 import { IMAGE_GENERATION_PROMPT_TEMPLATE } from '../settingsData';
 
 export class ImageService {
@@ -10,7 +10,8 @@ export class ImageService {
     prompt: string,
     apiKey: string,
     model: string,
-    style: ImageStyle
+    style: ImageStyle,
+    preferredLanguage: PreferredLanguage
   ): Promise<ImageGenerationResult> {
     if (!apiKey) {
       throw this.createError('INVALID_API_KEY', 'Google API key is not configured');
@@ -21,10 +22,21 @@ export class ImageService {
     }
 
     try {
-      // Format the prompt with style
+      // Language instruction mapping
+      const languageInstructions: Record<PreferredLanguage, string> = {
+        ko: 'IMPORTANT: All text in the image MUST be in Korean (한국어). Titles, labels, descriptions, and all content should be written in Korean.',
+        en: 'IMPORTANT: All text in the image MUST be in English. Titles, labels, descriptions, and all content should be written in English.',
+        ja: 'IMPORTANT: All text in the image MUST be in Japanese (日本語). Titles, labels, descriptions, and all content should be written in Japanese.',
+        zh: 'IMPORTANT: All text in the image MUST be in Chinese (中文). Titles, labels, descriptions, and all content should be written in Chinese.',
+        es: 'IMPORTANT: All text in the image MUST be in Spanish (Español). Titles, labels, descriptions, and all content should be written in Spanish.',
+        fr: 'IMPORTANT: All text in the image MUST be in French (Français). Titles, labels, descriptions, and all content should be written in French.',
+        de: 'IMPORTANT: All text in the image MUST be in German (Deutsch). Titles, labels, descriptions, and all content should be written in German.'
+      };
+
+      // Format the prompt with style and language
       const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE
         .replace('{style}', IMAGE_STYLES[style])
-        .replace('{prompt}', prompt);
+        .replace('{prompt}', prompt) + '\n\n' + languageInstructions[preferredLanguage];
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 

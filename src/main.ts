@@ -174,7 +174,8 @@ export default class NanoBananaPlugin extends Plugin {
           finalPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
 
@@ -320,7 +321,8 @@ export default class NanoBananaPlugin extends Plugin {
           this.lastPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
 

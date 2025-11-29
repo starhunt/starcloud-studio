@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import NanoBananaPlugin from './main';
-import { AIProvider, ImageStyle, PROVIDER_CONFIGS, IMAGE_STYLES } from './types';
+import { AIProvider, ImageStyle, PreferredLanguage, PROVIDER_CONFIGS, IMAGE_STYLES, LANGUAGE_NAMES } from './types';
 
 export class NanoBananaSettingTab extends PluginSettingTab {
   plugin: NanoBananaPlugin;
@@ -160,6 +160,26 @@ export class NanoBananaSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.imageStyle)
         .onChange(async (value: ImageStyle) => {
           this.plugin.settings.imageStyle = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Preferred Language')
+      .setDesc('Language for text in generated images (e.g., titles, labels, descriptions).')
+      .addDropdown(dropdown => dropdown
+        .addOptions({
+          'ko': '🇰🇷 한국어 (Korean)',
+          'en': '🇺🇸 English',
+          'ja': '🇯🇵 日本語 (Japanese)',
+          'zh': '🇨🇳 中文 (Chinese)',
+          'es': '🇪🇸 Español (Spanish)',
+          'fr': '🇫🇷 Français (French)',
+          'de': '🇩🇪 Deutsch (German)'
+        })
+        .setValue(this.plugin.settings.preferredLanguage)
+        .onChange(async (value: PreferredLanguage) => {
+          this.plugin.settings.preferredLanguage = value;
           await this.plugin.saveSettings();
         })
       );
