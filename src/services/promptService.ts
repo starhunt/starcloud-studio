@@ -110,7 +110,13 @@ export class PromptService {
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1000
-        }
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
       })
     });
 
@@ -125,6 +131,13 @@ export class PromptService {
 
     if (!generatedText) {
       console.error('Gemini API response:', JSON.stringify(data, null, 2));
+
+      // Check for safety ratings in the response
+      const safetyRatings = data.candidates?.[0]?.safetyRatings;
+      if (safetyRatings) {
+        console.error('Safety Ratings:', JSON.stringify(safetyRatings, null, 2));
+      }
+
       throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response. Check console for details.');
     }
 
