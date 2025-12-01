@@ -224,7 +224,14 @@ export default class NanoBananaPlugin extends Plugin {
         new Notice(`❌ Generation failed: ${genError.message}`);
       }
 
+      // Enhanced error logging for debugging
       console.error('NanoBanana PRO error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      } else if (typeof error === 'object' && error !== null) {
+        console.error('Error details:', JSON.stringify(error, null, 2));
+      }
     } finally {
       this.isGenerating = false;
     }

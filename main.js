@@ -38,7 +38,7 @@ var DEFAULT_SETTINGS = {
   xaiApiKey: "",
   // Prompt Generation
   selectedProvider: "google",
-  promptModel: "gemini-2.5-flash",
+  promptModel: "gemini-2.0-flash",
   // Image Generation
   imageModel: "gemini-3-pro-image-preview",
   imageStyle: "infographic",
@@ -107,8 +107,8 @@ var PROVIDER_CONFIGS = {
   google: {
     name: "Google Gemini",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
-    defaultModel: "gemini-2.5-flash",
-    models: ["gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"]
+    defaultModel: "gemini-2.0-flash",
+    models: ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"]
   },
   anthropic: {
     name: "Anthropic",
@@ -358,7 +358,7 @@ ${content}` }
     return ((_c = (_b = (_a = data.choices[0]) == null ? void 0 : _a.message) == null ? void 0 : _b.content) == null ? void 0 : _c.trim()) || "";
   }
   async callGoogle(model, apiKey, content) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const response = await (0, import_obsidian2.requestUrl)({
       url,
@@ -382,7 +382,13 @@ ${content}`
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1e3
-        }
+        },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+        ]
       })
     });
     if (response.status !== 200) {
@@ -392,6 +398,10 @@ ${content}`
     const generatedText = ((_f = (_e = (_d = (_c = (_b = (_a = data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "";
     if (!generatedText) {
       console.error("Gemini API response:", JSON.stringify(data, null, 2));
+      const safetyRatings = (_h = (_g = data.candidates) == null ? void 0 : _g[0]) == null ? void 0 : _h.safetyRatings;
+      if (safetyRatings) {
+        console.error("Safety Ratings:", JSON.stringify(safetyRatings, null, 2));
+      }
       throw this.createError("GENERATION_FAILED", "Gemini API returned empty response. Check console for details.");
     }
     return generatedText;
@@ -424,31 +434,44 @@ ${content}` }
     return ((_c = (_b = (_a = data.content) == null ? void 0 : _a[0]) == null ? void 0 : _b.text) == null ? void 0 : _c.trim()) || "";
   }
   async callXAI(model, apiKey, content) {
-    var _a, _b, _c;
-    const response = await (0, import_obsidian2.requestUrl)({
-      url: "https://api.x.ai/v1/chat/completions",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Create an image prompt for the following content:
+    var _a, _b, _c, _d;
+    console.log("xAI API call - Model:", model);
+    try {
+      const response = await (0, import_obsidian2.requestUrl)({
+        url: "https://api.x.ai/v1/chat/completions",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Create an image prompt for the following content:
 
 ${content}` }
-        ],
-        max_tokens: 1e3,
-        temperature: 0.7
-      })
-    });
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, "xai");
+          ],
+          max_tokens: 1e3,
+          temperature: 0.7
+        })
+      });
+      console.log("xAI API response status:", response.status);
+      if (response.status !== 200) {
+        console.error("xAI API error response:", response.text);
+        throw this.handleHttpError(response.status, response.text, "xai");
+      }
+      const data = response.json;
+      const generatedText = ((_d = (_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) == null ? void 0 : _d.trim()) || "";
+      if (!generatedText) {
+        console.error("xAI API returned empty response:", JSON.stringify(data, null, 2));
+        throw this.createError("GENERATION_FAILED", "xAI API returned empty response. Check console for details.");
+      }
+      return generatedText;
+    } catch (error) {
+      console.error("xAI API call failed:", error);
+      throw error;
     }
-    const data = response.json;
-    return ((_c = (_b = (_a = data.choices[0]) == null ? void 0 : _a.message) == null ? void 0 : _b.content) == null ? void 0 : _c.trim()) || "";
   }
   handleHttpError(status, responseText, provider) {
     if (status === 401 || status === 403) {
@@ -513,7 +536,13 @@ var ImageService = class {
           }],
           generationConfig: {
             responseModalities: ["TEXT", "IMAGE"]
-          }
+          },
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+          ]
         })
       });
       if (response.status !== 200) {
@@ -1480,6 +1509,12 @@ ${finalPrompt}`;
         new import_obsidian7.Notice(`\u274C Generation failed: ${genError.message}`);
       }
       console.error("NanoBanana PRO error:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      } else if (typeof error === "object" && error !== null) {
+        console.error("Error details:", JSON.stringify(error, null, 2));
+      }
     } finally {
       this.isGenerating = false;
     }

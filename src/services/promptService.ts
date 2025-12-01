@@ -172,30 +172,47 @@ export class PromptService {
   }
 
   private async callXAI(model: string, apiKey: string, content: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.x.ai/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
-    });
+    console.log('xAI API call - Model:', model);
 
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'xai');
+    try {
+      const response = await requestUrl({
+        url: 'https://api.x.ai/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7
+        })
+      });
+
+      console.log('xAI API response status:', response.status);
+
+      if (response.status !== 200) {
+        console.error('xAI API error response:', response.text);
+        throw this.handleHttpError(response.status, response.text, 'xai');
+      }
+
+      const data = response.json;
+      const generatedText = data.choices?.[0]?.message?.content?.trim() || '';
+
+      if (!generatedText) {
+        console.error('xAI API returned empty response:', JSON.stringify(data, null, 2));
+        throw this.createError('GENERATION_FAILED', 'xAI API returned empty response. Check console for details.');
+      }
+
+      return generatedText;
+    } catch (error) {
+      console.error('xAI API call failed:', error);
+      throw error;
     }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
   }
 
   private handleHttpError(status: number, responseText: string, provider: AIProvider): GenerationError {
