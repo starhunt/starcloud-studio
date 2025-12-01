@@ -478,7 +478,7 @@ ${content}` }
       return this.createError("INVALID_API_KEY", `Invalid ${PROVIDER_CONFIGS[provider].name} API key`);
     }
     if (status === 429) {
-      return this.createError("RATE_LIMIT", "API rate limit exceeded. Please wait and try again.", true);
+      return this.createError("RATE_LIMIT", "API rate limit exceeded. Please wait a few minutes and try again.", false);
     }
     if (status >= 500) {
       return this.createError("NETWORK_ERROR", "Server error. Please try again later.", true);
