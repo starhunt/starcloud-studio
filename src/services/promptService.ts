@@ -172,67 +172,32 @@ export class PromptService {
   }
 
   private async callXAI(model: string, apiKey: string, content: string): Promise<string> {
-    console.log('xAI API call - Model:', model);
+    // Restored to v1.0.1 simplicity - no content truncation, no complex logging
+    // grok-4-1-fast has large context window - let it handle full content
+    const response = await requestUrl({
+      url: 'https://api.x.ai/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
+        ],
+        max_tokens: 1000,  // Restored from v1.0.1 - was working fine
+        temperature: 0.7
+      })
+    });
 
-    // Truncate content if too long to avoid token limits
-    // xAI has per-minute token limits (can be as low as 16000 tokens for some tiers)
-    const MAX_CONTENT_CHARS = 12000; // ~3000 tokens, leaving room for system prompt and response
-    let truncatedContent = content;
-    if (content.length > MAX_CONTENT_CHARS) {
-      truncatedContent = content.substring(0, MAX_CONTENT_CHARS) + '\n\n[Content truncated for API limits...]';
-      console.log(`xAI: Content truncated from ${content.length} to ${MAX_CONTENT_CHARS} characters`);
+    if (response.status !== 200) {
+      throw this.handleHttpError(response.status, response.text, 'xai');
     }
 
-    try {
-      const response = await requestUrl({
-        url: 'https://api.x.ai/v1/chat/completions',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Create an image prompt for the following content:\n\n${truncatedContent}` }
-          ],
-          max_tokens: 1000,
-          temperature: 0.7
-        })
-      });
-
-      console.log('xAI API response status:', response.status);
-
-      if (response.status !== 200) {
-        console.error('xAI API error response:', response.text);
-        throw this.handleHttpError(response.status, response.text, 'xai');
-      }
-
-      const data = response.json;
-      const generatedText = data.choices?.[0]?.message?.content?.trim() || '';
-
-      if (!generatedText) {
-        console.error('xAI API returned empty response:', JSON.stringify(data, null, 2));
-        throw this.createError('GENERATION_FAILED', 'xAI API returned empty response. Check console for details.');
-      }
-
-      return generatedText;
-    } catch (error) {
-      // Extract detailed error info for xAI
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('xAI API call failed:', errorMessage);
-
-      // Check for rate limit in error message and extract details
-      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
-        console.error('xAI Rate Limit Details - Check your tier limits at https://console.x.ai');
-        throw this.createError('RATE_LIMIT',
-          'xAI rate limit exceeded. Your tier may have low token limits. Try: 1) Wait 1 minute, 2) Use a shorter note, 3) Check your tier at console.x.ai',
-          false);
-      }
-
-      throw error;
-    }
+    const data = response.json;
+    return data.choices[0]?.message?.content?.trim() || '';
   }
 
   private handleHttpError(status: number, responseText: string, provider: AIProvider): GenerationError {

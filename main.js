@@ -434,59 +434,32 @@ ${content}` }
     return ((_c = (_b = (_a = data.content) == null ? void 0 : _a[0]) == null ? void 0 : _b.text) == null ? void 0 : _c.trim()) || "";
   }
   async callXAI(model, apiKey, content) {
-    var _a, _b, _c, _d;
-    console.log("xAI API call - Model:", model);
-    const MAX_CONTENT_CHARS = 12e3;
-    let truncatedContent = content;
-    if (content.length > MAX_CONTENT_CHARS) {
-      truncatedContent = content.substring(0, MAX_CONTENT_CHARS) + "\n\n[Content truncated for API limits...]";
-      console.log(`xAI: Content truncated from ${content.length} to ${MAX_CONTENT_CHARS} characters`);
-    }
-    try {
-      const response = await (0, import_obsidian2.requestUrl)({
-        url: "https://api.x.ai/v1/chat/completions",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: `Create an image prompt for the following content:
+    var _a, _b, _c;
+    const response = await (0, import_obsidian2.requestUrl)({
+      url: "https://api.x.ai/v1/chat/completions",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Create an image prompt for the following content:
 
-${truncatedContent}` }
-          ],
-          max_tokens: 1e3,
-          temperature: 0.7
-        })
-      });
-      console.log("xAI API response status:", response.status);
-      if (response.status !== 200) {
-        console.error("xAI API error response:", response.text);
-        throw this.handleHttpError(response.status, response.text, "xai");
-      }
-      const data = response.json;
-      const generatedText = ((_d = (_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) == null ? void 0 : _d.trim()) || "";
-      if (!generatedText) {
-        console.error("xAI API returned empty response:", JSON.stringify(data, null, 2));
-        throw this.createError("GENERATION_FAILED", "xAI API returned empty response. Check console for details.");
-      }
-      return generatedText;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("xAI API call failed:", errorMessage);
-      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("rate limit")) {
-        console.error("xAI Rate Limit Details - Check your tier limits at https://console.x.ai");
-        throw this.createError(
-          "RATE_LIMIT",
-          "xAI rate limit exceeded. Your tier may have low token limits. Try: 1) Wait 1 minute, 2) Use a shorter note, 3) Check your tier at console.x.ai",
-          false
-        );
-      }
-      throw error;
+${content}` }
+        ],
+        max_tokens: 1e3,
+        // Restored from v1.0.1 - was working fine
+        temperature: 0.7
+      })
+    });
+    if (response.status !== 200) {
+      throw this.handleHttpError(response.status, response.text, "xai");
     }
+    const data = response.json;
+    return ((_c = (_b = (_a = data.choices[0]) == null ? void 0 : _a.message) == null ? void 0 : _b.content) == null ? void 0 : _c.trim()) || "";
   }
   handleHttpError(status, responseText, provider) {
     if (status === 401 || status === 403) {
