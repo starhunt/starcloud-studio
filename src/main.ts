@@ -1,5 +1,5 @@
 import { Plugin, MarkdownView, Notice, TFile } from 'obsidian';
-import { NanoBananaSettings, GenerationError, ProgressState } from './types';
+import { NanoBananaSettings, GenerationError, ProgressState, ImageStyle, ImageSize } from './types';
 import { DEFAULT_SETTINGS } from './settingsData';
 import { NanoBananaSettingTab } from './settings';
 import { PromptService } from './services/promptService';
@@ -7,6 +7,7 @@ import { ImageService } from './services/imageService';
 import { FileService } from './services/fileService';
 import { ProgressModal } from './progressModal';
 import { PreviewModal, PreviewModalResult } from './previewModal';
+import { QuickOptionsModal, QuickOptionsResult } from './quickOptionsModal';
 
 export default class NanoBananaPlugin extends Plugin {
   settings: NanoBananaSettings;
@@ -98,6 +99,16 @@ export default class NanoBananaPlugin extends Plugin {
       return;
     }
 
+    // Show Quick Options Modal first
+    const quickOptions = await this.showQuickOptionsModal();
+    if (!quickOptions.confirmed) {
+      return; // User cancelled
+    }
+
+    // Use selected options for this generation
+    const selectedStyle = quickOptions.imageStyle;
+    const selectedSize = quickOptions.imageSize;
+
     this.isGenerating = true;
     this.lastNoteFile = noteFile;
 
@@ -162,7 +173,7 @@ export default class NanoBananaPlugin extends Plugin {
         }
       }
 
-      // Step 3: Generate image
+      // Step 3: Generate image with selected options
       this.updateProgress(progressModal, {
         step: 'generating-image',
         progress: 50,
@@ -174,9 +185,9 @@ export default class NanoBananaPlugin extends Plugin {
           finalPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle,
+          selectedStyle,
           this.settings.preferredLanguage,
-          this.settings.imageSize
+          selectedSize
         );
       });
 
@@ -385,6 +396,21 @@ export default class NanoBananaPlugin extends Plugin {
         this.settings,
         (result) => resolve(result),
         this.settings.preferredLanguage
+      );
+      modal.open();
+    });
+  }
+
+  /**
+   * Show quick options modal for style and resolution selection
+   */
+  private showQuickOptionsModal(): Promise<QuickOptionsResult> {
+    return new Promise((resolve) => {
+      const modal = new QuickOptionsModal(
+        this.app,
+        this.settings.imageStyle,
+        this.settings.imageSize,
+        (result) => resolve(result)
       );
       modal.open();
     });

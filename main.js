@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => NanoBananaPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/settingsData.ts
 var DEFAULT_SETTINGS = {
@@ -1365,8 +1365,129 @@ var PreviewModal = class extends import_obsidian6.Modal {
   }
 };
 
+// src/quickOptionsModal.ts
+var import_obsidian7 = require("obsidian");
+var QuickOptionsModal = class extends import_obsidian7.Modal {
+  constructor(app, currentStyle, currentSize, onSubmit) {
+    super(app);
+    this.selectedStyle = currentStyle;
+    this.selectedSize = currentSize;
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("nanobanana-quick-options");
+    contentEl.createEl("h2", {
+      text: "\u{1F3A8} Quick Options",
+      cls: "nanobanana-modal-title"
+    });
+    contentEl.createEl("p", {
+      text: "Choose image style and resolution for this generation.",
+      cls: "nanobanana-modal-desc"
+    });
+    new import_obsidian7.Setting(contentEl).setName("Image Style").setDesc("Select the visual style for your Knowledge Poster").addDropdown(
+      (dropdown) => dropdown.addOptions({
+        "infographic": "\u{1F4CA} Infographic - Charts & Visual Hierarchy",
+        "poster": "\u{1F3A8} Poster - Bold Typography & Imagery",
+        "diagram": "\u{1F4D0} Diagram - Technical Connections",
+        "mindmap": "\u{1F9E0} Mind Map - Central Concept & Branches",
+        "timeline": "\u{1F4C5} Timeline - Progression & Milestones"
+      }).setValue(this.selectedStyle).onChange((value) => {
+        this.selectedStyle = value;
+      })
+    );
+    new import_obsidian7.Setting(contentEl).setName("Image Resolution").setDesc("Higher resolution = better quality (4K recommended for Korean text)").addDropdown(
+      (dropdown) => dropdown.addOptions({
+        "1K": "1K - Standard Quality",
+        "2K": "2K - High Quality",
+        "4K": "4K - Ultra HD Quality \u2B50"
+      }).setValue(this.selectedSize).onChange((value) => {
+        this.selectedSize = value;
+      })
+    );
+    const buttonContainer = contentEl.createDiv({ cls: "nanobanana-button-container" });
+    const cancelBtn = buttonContainer.createEl("button", {
+      text: "Cancel",
+      cls: "nanobanana-btn nanobanana-btn-cancel"
+    });
+    cancelBtn.onclick = () => {
+      this.onSubmit({
+        confirmed: false,
+        imageStyle: this.selectedStyle,
+        imageSize: this.selectedSize
+      });
+      this.close();
+    };
+    const generateBtn = buttonContainer.createEl("button", {
+      text: "\u{1F680} Generate Poster",
+      cls: "nanobanana-btn nanobanana-btn-primary"
+    });
+    generateBtn.onclick = () => {
+      this.onSubmit({
+        confirmed: true,
+        imageStyle: this.selectedStyle,
+        imageSize: this.selectedSize
+      });
+      this.close();
+    };
+    this.addStyles();
+  }
+  addStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+      .nanobanana-quick-options {
+        padding: 20px;
+      }
+      .nanobanana-modal-title {
+        margin: 0 0 8px 0;
+        font-size: 1.4em;
+      }
+      .nanobanana-modal-desc {
+        color: var(--text-muted);
+        margin-bottom: 20px;
+      }
+      .nanobanana-button-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid var(--background-modifier-border);
+      }
+      .nanobanana-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        border: none;
+        transition: all 0.2s ease;
+      }
+      .nanobanana-btn-cancel {
+        background: var(--background-modifier-border);
+        color: var(--text-normal);
+      }
+      .nanobanana-btn-cancel:hover {
+        background: var(--background-modifier-hover);
+      }
+      .nanobanana-btn-primary {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+      }
+      .nanobanana-btn-primary:hover {
+        background: var(--interactive-accent-hover);
+      }
+    `;
+    this.contentEl.appendChild(style);
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+};
+
 // src/main.ts
-var NanoBananaPlugin = class extends import_obsidian7.Plugin {
+var NanoBananaPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
     this.lastPrompt = "";
@@ -1410,29 +1531,35 @@ var NanoBananaPlugin = class extends import_obsidian7.Plugin {
    */
   async generatePoster() {
     if (this.isGenerating) {
-      new import_obsidian7.Notice("Generation already in progress");
+      new import_obsidian8.Notice("Generation already in progress");
       return;
     }
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView);
+    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
     if (!activeView || !activeView.file) {
-      new import_obsidian7.Notice("Please open a note first");
+      new import_obsidian8.Notice("Please open a note first");
       return;
     }
     const noteFile = activeView.file;
     const noteContent = await this.app.vault.read(noteFile);
     if (!noteContent.trim()) {
-      new import_obsidian7.Notice("Note is empty. Please add some content first.");
+      new import_obsidian8.Notice("Note is empty. Please add some content first.");
       return;
     }
     if (!this.settings.googleApiKey) {
-      new import_obsidian7.Notice("Google API key is required for image generation. Please configure it in settings.");
+      new import_obsidian8.Notice("Google API key is required for image generation. Please configure it in settings.");
       return;
     }
     const providerKey = this.getProviderApiKey();
     if (!providerKey) {
-      new import_obsidian7.Notice(`${this.settings.selectedProvider} API key is not configured. Please check settings.`);
+      new import_obsidian8.Notice(`${this.settings.selectedProvider} API key is not configured. Please check settings.`);
       return;
     }
+    const quickOptions = await this.showQuickOptionsModal();
+    if (!quickOptions.confirmed) {
+      return;
+    }
+    const selectedStyle = quickOptions.imageStyle;
+    const selectedSize = quickOptions.imageSize;
     this.isGenerating = true;
     this.lastNoteFile = noteFile;
     let progressModal = null;
@@ -1491,9 +1618,9 @@ ${finalPrompt}`;
           finalPrompt,
           this.settings.googleApiKey,
           this.settings.imageModel,
-          this.settings.imageStyle,
+          selectedStyle,
           this.settings.preferredLanguage,
-          this.settings.imageSize
+          selectedSize
         );
       });
       this.updateProgress(progressModal, {
@@ -1521,14 +1648,14 @@ ${finalPrompt}`;
       if (progressModal) {
         progressModal.showSuccess(imagePath);
       } else {
-        new import_obsidian7.Notice("\u2705 Knowledge Poster generated successfully!");
+        new import_obsidian8.Notice("\u2705 Knowledge Poster generated successfully!");
       }
     } catch (error) {
       const genError = error;
       if (progressModal) {
         progressModal.showError(genError);
       } else {
-        new import_obsidian7.Notice(`\u274C Generation failed: ${genError.message}`);
+        new import_obsidian8.Notice(`\u274C Generation failed: ${genError.message}`);
       }
       console.error("NanoBanana PRO error:", error);
       if (error instanceof Error) {
@@ -1545,23 +1672,23 @@ ${finalPrompt}`;
    * Generate prompt only and copy to clipboard
    */
   async generatePromptOnly() {
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView);
+    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
     if (!activeView || !activeView.file) {
-      new import_obsidian7.Notice("Please open a note first");
+      new import_obsidian8.Notice("Please open a note first");
       return;
     }
     const noteContent = await this.app.vault.read(activeView.file);
     if (!noteContent.trim()) {
-      new import_obsidian7.Notice("Note is empty");
+      new import_obsidian8.Notice("Note is empty");
       return;
     }
     const providerKey = this.getProviderApiKey();
     if (!providerKey) {
-      new import_obsidian7.Notice(`${this.settings.selectedProvider} API key is not configured`);
+      new import_obsidian8.Notice(`${this.settings.selectedProvider} API key is not configured`);
       return;
     }
     try {
-      new import_obsidian7.Notice("Generating prompt...");
+      new import_obsidian8.Notice("Generating prompt...");
       const result = await this.promptService.generatePrompt(
         noteContent,
         this.settings.selectedProvider,
@@ -1570,10 +1697,10 @@ ${finalPrompt}`;
       );
       await navigator.clipboard.writeText(result.prompt);
       this.lastPrompt = result.prompt;
-      new import_obsidian7.Notice("\u2705 Prompt copied to clipboard!");
+      new import_obsidian8.Notice("\u2705 Prompt copied to clipboard!");
     } catch (error) {
       const genError = error;
-      new import_obsidian7.Notice(`\u274C Failed: ${genError.message}`);
+      new import_obsidian8.Notice(`\u274C Failed: ${genError.message}`);
     }
   }
   /**
@@ -1581,20 +1708,20 @@ ${finalPrompt}`;
    */
   async regenerateLastPoster() {
     if (!this.lastPrompt) {
-      new import_obsidian7.Notice("No previous generation found. Please generate a poster first.");
+      new import_obsidian8.Notice("No previous generation found. Please generate a poster first.");
       return;
     }
     if (!this.lastNoteFile) {
-      new import_obsidian7.Notice("Original note not found. Please generate a new poster.");
+      new import_obsidian8.Notice("Original note not found. Please generate a new poster.");
       return;
     }
     const file = this.app.vault.getAbstractFileByPath(this.lastNoteFile.path);
-    if (!file || !(file instanceof import_obsidian7.TFile)) {
-      new import_obsidian7.Notice("Original note was moved or deleted");
+    if (!file || !(file instanceof import_obsidian8.TFile)) {
+      new import_obsidian8.Notice("Original note was moved or deleted");
       return;
     }
     if (this.isGenerating) {
-      new import_obsidian7.Notice("Generation already in progress");
+      new import_obsidian8.Notice("Generation already in progress");
       return;
     }
     this.isGenerating = true;
@@ -1639,14 +1766,14 @@ ${finalPrompt}`;
       if (progressModal) {
         progressModal.showSuccess(imagePath);
       } else {
-        new import_obsidian7.Notice("\u2705 Poster regenerated successfully!");
+        new import_obsidian8.Notice("\u2705 Poster regenerated successfully!");
       }
     } catch (error) {
       const genError = error;
       if (progressModal) {
         progressModal.showError(genError);
       } else {
-        new import_obsidian7.Notice(`\u274C Regeneration failed: ${genError.message}`);
+        new import_obsidian8.Notice(`\u274C Regeneration failed: ${genError.message}`);
       }
     } finally {
       this.isGenerating = false;
@@ -1663,6 +1790,20 @@ ${finalPrompt}`;
         this.settings,
         (result) => resolve(result),
         this.settings.preferredLanguage
+      );
+      modal.open();
+    });
+  }
+  /**
+   * Show quick options modal for style and resolution selection
+   */
+  showQuickOptionsModal() {
+    return new Promise((resolve) => {
+      const modal = new QuickOptionsModal(
+        this.app,
+        this.settings.imageStyle,
+        this.settings.imageSize,
+        (result) => resolve(result)
       );
       modal.open();
     });
