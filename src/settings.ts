@@ -14,8 +14,6 @@ export class NanoBananaSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName('NanoBanana PRO settings').setHeading();
-
     // ==================== API Keys Section ====================
     new Setting(containerEl).setName('API keys').setHeading();
 

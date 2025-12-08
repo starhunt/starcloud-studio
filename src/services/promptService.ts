@@ -56,8 +56,10 @@ export class PromptService {
         return this.callAnthropic(model, apiKey, content);
       case 'xai':
         return this.callXAI(model, apiKey, content);
-      default:
-        throw this.createError('UNKNOWN', `Unknown provider: ${provider}`);
+      default: {
+        const unknownProvider: never = provider;
+        throw this.createError('UNKNOWN', `Unknown provider: ${String(unknownProvider)}`);
+      }
     }
   }
 

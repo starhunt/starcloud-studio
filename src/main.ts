@@ -455,7 +455,7 @@ export default class NanoBananaPlugin extends Plugin {
       }
     }
 
-    throw lastError;
+    throw lastError ?? new Error('Operation failed with no error details');
   }
 
   /**

@@ -153,7 +153,6 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian.Setting(containerEl).setName("NanoBanana PRO settings").setHeading();
     new import_obsidian.Setting(containerEl).setName("API keys").setHeading();
     new import_obsidian.Setting(containerEl).setName("Google API key").setDesc("Required for image generation. Get your key from Google AI Studio.").addText(
       (text) => text.setPlaceholder("Enter your Google API key").setValue(this.plugin.settings.googleApiKey).onChange(async (value) => {
@@ -374,8 +373,10 @@ var PromptService = class {
         return this.callAnthropic(model, apiKey, content);
       case "xai":
         return this.callXAI(model, apiKey, content);
-      default:
-        throw this.createError("UNKNOWN", `Unknown provider: ${provider}`);
+      default: {
+        const unknownProvider = provider;
+        throw this.createError("UNKNOWN", `Unknown provider: ${String(unknownProvider)}`);
+      }
     }
   }
   async callOpenAI(model, apiKey, content) {
@@ -822,7 +823,7 @@ var import_obsidian5 = require("obsidian");
 var MESSAGES = {
   ko: {
     // Progress Modal
-    progressTitle: "\u{1F3A8} Knowledge Poster \uC0DD\uC131 \uC911...",
+    progressTitle: "\u{1F3A8} Knowledge poster \uC0DD\uC131 \uC911...",
     estimatedTime: "\u23F1\uFE0F \uC608\uC0C1 \uC18C\uC694 \uC2DC\uAC04: \uC57D 15-30\uCD08",
     cancel: "\uCDE8\uC18C",
     // Progress Steps
@@ -832,7 +833,7 @@ var MESSAGES = {
     stepSaving: "\uD30C\uC77C \uC800\uC7A5",
     stepEmbedding: "\uB178\uD2B8\uC5D0 \uC0BD\uC785",
     // Success
-    successTitle: "\u2705 Knowledge Poster \uC0DD\uC131 \uC644\uB8CC!",
+    successTitle: "\u2705 Knowledge poster \uC0DD\uC131 \uC644\uB8CC!",
     successSaved: "\u{1F4C1} \uC800\uC7A5 \uC704\uCE58",
     confirm: "\uD655\uC778",
     // Error
@@ -868,7 +869,7 @@ var MESSAGES = {
   },
   en: {
     // Progress Modal
-    progressTitle: "\u{1F3A8} Generating Knowledge Poster...",
+    progressTitle: "\u{1F3A8} Generating knowledge poster...",
     estimatedTime: "\u23F1\uFE0F Estimated time: about 15-30 seconds",
     cancel: "Cancel",
     // Progress Steps
@@ -878,11 +879,11 @@ var MESSAGES = {
     stepSaving: "Saving file",
     stepEmbedding: "Embedding in note",
     // Success
-    successTitle: "\u2705 Knowledge Poster Created!",
+    successTitle: "\u2705 Knowledge poster created!",
     successSaved: "\u{1F4C1} Saved to",
     confirm: "OK",
     // Error
-    errorTitle: "\u274C Generation Failed",
+    errorTitle: "\u274C Generation failed",
     errorSolutions: "\u{1F4A1} Solutions:",
     retry: "Retry",
     close: "Close",
@@ -899,17 +900,17 @@ var MESSAGES = {
     suggestionContentMayBeSensitive: "The content may contain sensitive material",
     suggestionAddContent: "Please add content to your note",
     // Preview Modal
-    previewTitle: "\u{1F4DD} Prompt Preview",
-    previewPromptLabel: "Generated Prompt (Editable):",
+    previewTitle: "\u{1F4DD} Prompt preview",
+    previewPromptLabel: "Generated prompt (editable):",
     previewCharacters: "characters",
     previewTipsTitle: "\u{1F4A1} Tips:",
     previewTip1: "You can edit the prompt to adjust the desired style",
     previewTip2: "Adding specific colors, layouts, and elements will give better results",
     previewTip3: 'Use the "Regenerate" button to create a new prompt',
-    previewGenerate: "\u{1F3A8} Generate Image",
+    previewGenerate: "\u{1F3A8} Generate image",
     previewRegenerate: "\u{1F504} Regenerate",
-    previewPromptModel: "\u{1F916} Prompt Model",
-    previewImageModel: "\u{1F5BC}\uFE0F Image Model",
+    previewPromptModel: "\u{1F916} Prompt model",
+    previewImageModel: "\u{1F5BC}\uFE0F Image model",
     previewStyle: "\u{1F4CA} Style"
   },
   ja: {
@@ -1006,7 +1007,7 @@ var MESSAGES = {
   },
   es: {
     // Progress Modal
-    progressTitle: "\u{1F3A8} Generando P\xF3ster de Conocimiento...",
+    progressTitle: "\u{1F3A8} Generando p\xF3ster de conocimiento...",
     estimatedTime: "\u23F1\uFE0F Tiempo estimado: aproximadamente 15-30 segundos",
     cancel: "Cancelar",
     // Progress Steps
@@ -1016,11 +1017,11 @@ var MESSAGES = {
     stepSaving: "Guardando archivo",
     stepEmbedding: "Insertando en nota",
     // Success
-    successTitle: "\u2705 \xA1P\xF3ster de Conocimiento Creado!",
+    successTitle: "\u2705 \xA1P\xF3ster de conocimiento creado!",
     successSaved: "\u{1F4C1} Guardado en",
     confirm: "Aceptar",
     // Error
-    errorTitle: "\u274C Generaci\xF3n Fallida",
+    errorTitle: "\u274C Generaci\xF3n fallida",
     errorSolutions: "\u{1F4A1} Soluciones:",
     retry: "Reintentar",
     close: "Cerrar",
@@ -1037,22 +1038,22 @@ var MESSAGES = {
     suggestionContentMayBeSensitive: "El contenido puede contener material sensible",
     suggestionAddContent: "Por favor, agrega contenido a tu nota",
     // Preview Modal
-    previewTitle: "\u{1F4DD} Vista Previa del Prompt",
-    previewPromptLabel: "Prompt Generado (Editable):",
+    previewTitle: "\u{1F4DD} Vista previa del prompt",
+    previewPromptLabel: "Prompt generado (editable):",
     previewCharacters: "caracteres",
     previewTipsTitle: "\u{1F4A1} Consejos:",
     previewTip1: "Puedes editar el prompt para ajustar el estilo deseado",
     previewTip2: "Agregar colores, dise\xF1os y elementos espec\xEDficos dar\xE1 mejores resultados",
     previewTip3: 'Usa el bot\xF3n "Regenerar" para crear un nuevo prompt',
-    previewGenerate: "\u{1F3A8} Generar Imagen",
+    previewGenerate: "\u{1F3A8} Generar imagen",
     previewRegenerate: "\u{1F504} Regenerar",
-    previewPromptModel: "\u{1F916} Modelo de Prompt",
-    previewImageModel: "\u{1F5BC}\uFE0F Modelo de Imagen",
+    previewPromptModel: "\u{1F916} Modelo de prompt",
+    previewImageModel: "\u{1F5BC}\uFE0F Modelo de imagen",
     previewStyle: "\u{1F4CA} Estilo"
   },
   fr: {
     // Progress Modal
-    progressTitle: "\u{1F3A8} G\xE9n\xE9ration de l'Affiche de Connaissances...",
+    progressTitle: "\u{1F3A8} G\xE9n\xE9ration de l'affiche de connaissances...",
     estimatedTime: "\u23F1\uFE0F Temps estim\xE9 : environ 15-30 secondes",
     cancel: "Annuler",
     // Progress Steps
@@ -1062,11 +1063,11 @@ var MESSAGES = {
     stepSaving: "Enregistrement du fichier",
     stepEmbedding: "Insertion dans la note",
     // Success
-    successTitle: "\u2705 Affiche de Connaissances Cr\xE9\xE9e !",
+    successTitle: "\u2705 Affiche de connaissances cr\xE9\xE9e !",
     successSaved: "\u{1F4C1} Enregistr\xE9 dans",
     confirm: "OK",
     // Error
-    errorTitle: "\u274C \xC9chec de la G\xE9n\xE9ration",
+    errorTitle: "\u274C \xC9chec de la g\xE9n\xE9ration",
     errorSolutions: "\u{1F4A1} Solutions :",
     retry: "R\xE9essayer",
     close: "Fermer",
@@ -1083,17 +1084,17 @@ var MESSAGES = {
     suggestionContentMayBeSensitive: "Le contenu peut contenir du mat\xE9riel sensible",
     suggestionAddContent: "Veuillez ajouter du contenu \xE0 votre note",
     // Preview Modal
-    previewTitle: "\u{1F4DD} Aper\xE7u du Prompt",
-    previewPromptLabel: "Prompt G\xE9n\xE9r\xE9 (Modifiable):",
+    previewTitle: "\u{1F4DD} Aper\xE7u du prompt",
+    previewPromptLabel: "Prompt g\xE9n\xE9r\xE9 (modifiable):",
     previewCharacters: "caract\xE8res",
     previewTipsTitle: "\u{1F4A1} Conseils:",
     previewTip1: "Vous pouvez modifier le prompt pour ajuster le style souhait\xE9",
     previewTip2: "Ajouter des couleurs, des mises en page et des \xE9l\xE9ments sp\xE9cifiques donnera de meilleurs r\xE9sultats",
     previewTip3: 'Utilisez le bouton "R\xE9g\xE9n\xE9rer" pour cr\xE9er un nouveau prompt',
-    previewGenerate: "\u{1F3A8} G\xE9n\xE9rer l'Image",
+    previewGenerate: "\u{1F3A8} G\xE9n\xE9rer l'image",
     previewRegenerate: "\u{1F504} R\xE9g\xE9n\xE9rer",
-    previewPromptModel: "\u{1F916} Mod\xE8le de Prompt",
-    previewImageModel: "\u{1F5BC}\uFE0F Mod\xE8le d'Image",
+    previewPromptModel: "\u{1F916} Mod\xE8le de prompt",
+    previewImageModel: "\u{1F5BC}\uFE0F Mod\xE8le d'image",
     previewStyle: "\u{1F4CA} Style"
   },
   de: {
@@ -1130,7 +1131,7 @@ var MESSAGES = {
     suggestionAddContent: "Bitte f\xFCgen Sie Inhalt zu Ihrer Notiz hinzu",
     // Preview Modal
     previewTitle: "\u{1F4DD} Prompt-Vorschau",
-    previewPromptLabel: "Generierter Prompt (Bearbeitbar):",
+    previewPromptLabel: "Generierter Prompt (bearbeitbar):",
     previewCharacters: "Zeichen",
     previewTipsTitle: "\u{1F4A1} Tipps:",
     previewTip1: "Sie k\xF6nnen den Prompt bearbeiten, um den gew\xFCnschten Stil anzupassen",
@@ -1898,7 +1899,7 @@ ${finalPrompt}`;
         await this.sleep(delay);
       }
     }
-    throw lastError;
+    throw lastError != null ? lastError : new Error("Operation failed with no error details");
   }
   /**
    * Update progress modal
