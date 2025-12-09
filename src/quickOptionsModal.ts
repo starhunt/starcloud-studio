@@ -40,7 +40,7 @@ export class QuickOptionsModal extends Modal {
 
     // Title
     contentEl.createEl('h2', {
-      text: '🎨 Quick options',
+      text: '🎨 quick options',
       cls: 'nanobanana-modal-title'
     });
 
@@ -55,12 +55,12 @@ export class QuickOptionsModal extends Modal {
       .setDesc('Select the visual style for your knowledge poster')
       .addDropdown(dropdown => dropdown
         .addOptions({
-          'infographic': '📊 Infographic - charts & visual hierarchy',
-          'poster': '🎨 Poster - bold typography & imagery',
-          'diagram': '📐 Diagram - technical connections',
-          'mindmap': '🧠 Mind map - central concept & branches',
-          'timeline': '📅 Timeline - progression & milestones',
-          'cartoon': '🎬 Cartoon - comic strip panels'
+          'infographic': '📊 infographic - charts & visual hierarchy',
+          'poster': '🎨 poster - bold typography & imagery',
+          'diagram': '📐 diagram - technical connections',
+          'mindmap': '🧠 mind map - central concept & branches',
+          'timeline': '📅 timeline - progression & milestones',
+          'cartoon': '🎬 cartoon - comic strip panels'
         })
         .setValue(this.selectedStyle)
         .onChange((value: ImageStyle) => {
