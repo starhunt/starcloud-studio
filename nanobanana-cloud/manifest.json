@@ -1,0 +1,10 @@
+{
+  "id": "nanobanana-cloud",
+  "name": "NanoBanana Cloud",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Generate AI-powered Knowledge Posters from your notes and upload to Google Drive",
+  "author": "NanoBanana",
+  "authorUrl": "https://github.com/nanobanana",
+  "isDesktopOnly": true
+}
