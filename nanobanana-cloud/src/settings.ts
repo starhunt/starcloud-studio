@@ -218,7 +218,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('GLM API Key (智谱AI)')
+      .setName('GLM API Key')
       .setDesc('Optional: For prompt generation')
       .addText(text => text
         .setPlaceholder('Your GLM API key')

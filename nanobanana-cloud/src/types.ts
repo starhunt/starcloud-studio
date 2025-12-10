@@ -38,7 +38,7 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
   },
   glm: {
     name: 'GLM (z.ai)',
-    endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    endpoint: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
     defaultModel: 'glm-4.6',
     suggestedModels: 'glm-4.6, glm-4-flash, glm-4-plus, glm-4-air, glm-4'
   }

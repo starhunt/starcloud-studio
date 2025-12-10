@@ -209,7 +209,7 @@ export class PromptService {
    */
   private async callGLM(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
     const response = await requestUrl({
-      url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      url: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
