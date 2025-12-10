@@ -15,6 +15,7 @@ export class QuickOptionsModal extends Modal {
   private result: QuickOptionsResult;
   private onSubmit: (result: QuickOptionsResult) => void;
   private hasSelection: boolean;
+  private customInputTextArea: HTMLTextAreaElement | null = null;
 
   constructor(
     app: App,
@@ -28,6 +29,7 @@ export class QuickOptionsModal extends Modal {
     this.result = {
       confirmed: false,
       inputSource: hasSelection ? 'selection' : settings.defaultInputSource,
+      customInputText: '',
       imageStyle: settings.imageStyle,
       infographicSubStyle: settings.infographicSubStyle,
       imageSize: settings.imageSize,
@@ -56,8 +58,7 @@ export class QuickOptionsModal extends Modal {
     });
     fullNoteOption.createDiv({ cls: 'option-icon', text: '📄' });
     fullNoteOption.createDiv({ cls: 'option-title', text: '전체 노트' });
-    fullNoteOption.createDiv({ cls: 'option-desc', text: '노트 전체 내용 사용 (커서 위치에 삽입)' });
-    fullNoteOption.onclick = () => this.selectInputSource('fullNote', fullNoteOption, selectionOption);
+    fullNoteOption.createDiv({ cls: 'option-desc', text: '노트 전체 내용 사용' });
 
     // Selection Option
     const selectionOption = inputSourceContainer.createDiv({
@@ -65,12 +66,50 @@ export class QuickOptionsModal extends Modal {
     });
     selectionOption.createDiv({ cls: 'option-icon', text: '✂️' });
     selectionOption.createDiv({ cls: 'option-title', text: '선택 영역' });
-    selectionOption.createDiv({ cls: 'option-desc', text: '선택된 텍스트만 사용 (선택 끝에 삽입)' });
-    if (this.hasSelection) {
-      selectionOption.onclick = () => this.selectInputSource('selection', fullNoteOption, selectionOption);
-    } else {
+    selectionOption.createDiv({ cls: 'option-desc', text: '선택된 텍스트만 사용' });
+    if (!this.hasSelection) {
       selectionOption.createDiv({ cls: 'option-hint', text: '(텍스트를 선택해주세요)' });
     }
+
+    // Custom Input Option
+    const customOption = inputSourceContainer.createDiv({
+      cls: `input-source-option ${this.result.inputSource === 'custom' ? 'selected' : ''}`
+    });
+    customOption.createDiv({ cls: 'option-icon', text: '✏️' });
+    customOption.createDiv({ cls: 'option-title', text: '직접 입력' });
+    customOption.createDiv({ cls: 'option-desc', text: '텍스트 직접 입력' });
+
+    // Custom Input TextArea (shown when custom is selected)
+    const customInputContainer = contentEl.createDiv({ cls: 'custom-input-container' });
+    if (this.result.inputSource !== 'custom') {
+      customInputContainer.style.display = 'none';
+    }
+    this.customInputTextArea = customInputContainer.createEl('textarea', {
+      cls: 'custom-input-textarea',
+      attr: {
+        rows: '6',
+        placeholder: '포스터로 만들 내용을 직접 입력하세요...'
+      }
+    });
+    this.customInputTextArea.value = this.result.customInputText;
+    this.customInputTextArea.oninput = () => {
+      if (this.customInputTextArea) {
+        this.result.customInputText = this.customInputTextArea.value;
+      }
+    };
+
+    // Click handlers
+    fullNoteOption.onclick = () => {
+      this.selectInputSourceWithCustom('fullNote', fullNoteOption, selectionOption, customOption, customInputContainer);
+    };
+    if (this.hasSelection) {
+      selectionOption.onclick = () => {
+        this.selectInputSourceWithCustom('selection', fullNoteOption, selectionOption, customOption, customInputContainer);
+      };
+    }
+    customOption.onclick = () => {
+      this.selectInputSourceWithCustom('custom', fullNoteOption, selectionOption, customOption, customInputContainer);
+    };
 
     // Image Style Section
     new Setting(contentEl)
@@ -138,14 +177,30 @@ export class QuickOptionsModal extends Modal {
     this.addStyles();
   }
 
-  private selectInputSource(source: InputSource, fullNoteEl: HTMLElement, selectionEl: HTMLElement) {
+  private selectInputSourceWithCustom(
+    source: InputSource,
+    fullNoteEl: HTMLElement,
+    selectionEl: HTMLElement,
+    customEl: HTMLElement,
+    customInputContainer: HTMLElement
+  ) {
     this.result.inputSource = source;
     fullNoteEl.removeClass('selected');
     selectionEl.removeClass('selected');
+    customEl.removeClass('selected');
+
     if (source === 'fullNote') {
       fullNoteEl.addClass('selected');
-    } else {
+      customInputContainer.style.display = 'none';
+    } else if (source === 'selection') {
       selectionEl.addClass('selected');
+      customInputContainer.style.display = 'none';
+    } else if (source === 'custom') {
+      customEl.addClass('selected');
+      customInputContainer.style.display = 'block';
+      if (this.customInputTextArea) {
+        this.customInputTextArea.focus();
+      }
     }
   }
 
@@ -352,6 +407,29 @@ export class QuickOptionsModal extends Modal {
         font-size: 11px;
         color: var(--text-error);
         margin-top: 4px;
+      }
+
+      .custom-input-container {
+        margin-bottom: 20px;
+      }
+
+      .custom-input-textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 8px;
+        background: var(--background-primary);
+        color: var(--text-normal);
+        resize: vertical;
+      }
+
+      .custom-input-textarea:focus {
+        outline: none;
+        border-color: var(--interactive-accent);
+        box-shadow: 0 0 0 2px var(--interactive-accent-hover);
       }
 
       .style-grid {

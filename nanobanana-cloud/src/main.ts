@@ -276,7 +276,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: '노트 내용 분석 중...'
       });
 
-      const content = await this.getContent(editor, noteFile, options.inputSource);
+      const content = await this.getContent(editor, noteFile, options.inputSource, options.customInputText);
       if (!content.trim()) {
         throw new GenerationErrorClass('NO_CONTENT', 'No content to generate from');
       }
@@ -442,7 +442,16 @@ export default class NanoBananaCloudPlugin extends Plugin {
   /**
    * Get content based on input source
    */
-  private async getContent(editor: Editor, noteFile: TFile, inputSource: InputSource): Promise<string> {
+  private async getContent(
+    editor: Editor,
+    noteFile: TFile,
+    inputSource: InputSource,
+    customInputText?: string
+  ): Promise<string> {
+    if (inputSource === 'custom' && customInputText) {
+      return customInputText;
+    }
+
     if (inputSource === 'selection') {
       const selection = this.embedService.getSelectedText(editor);
       if (selection) {

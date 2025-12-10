@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   organizeFoldersByDate: true,
 
   // Embedding
-  embedSize: 'large',
+  embedSize: 'medium',
   showTitleInEmbed: false,
 
   // UX

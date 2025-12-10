@@ -116,7 +116,7 @@ export class EmbedService {
 <iframe
     src="${previewUrl}"
     width="100%"
-    height="${sizeConfig.height}"
+    height="600px"
     frameborder="0"
     allowfullscreen
     style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">

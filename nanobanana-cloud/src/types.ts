@@ -8,7 +8,7 @@ export interface ProviderConfig {
   name: string;
   endpoint: string;
   defaultModel: string;
-  models: string[];
+  suggestedModels: string; // Comma-separated list of suggested models for display
 }
 
 export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
@@ -16,39 +16,42 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
     name: 'OpenAI',
     endpoint: 'https://api.openai.com/v1/chat/completions',
     defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']
+    suggestedModels: 'gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo'
   },
   google: {
     name: 'Google Gemini',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
     defaultModel: 'gemini-2.0-flash',
-    models: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash']
+    suggestedModels: 'gemini-2.0-flash, gemini-2.5-flash, gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash'
   },
   anthropic: {
     name: 'Anthropic',
     endpoint: 'https://api.anthropic.com/v1/messages',
     defaultModel: 'claude-sonnet-4-20250514',
-    models: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307']
+    suggestedModels: 'claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-haiku-20240307'
   },
   xai: {
     name: 'xAI',
     endpoint: 'https://api.x.ai/v1/chat/completions',
     defaultModel: 'grok-4-1-fast',
-    models: ['grok-4-1-fast', 'grok-beta', 'grok-2-latest']
+    suggestedModels: 'grok-4-1-fast, grok-beta, grok-2-latest'
   },
   glm: {
     name: 'GLM (智谱AI)',
     endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
     defaultModel: 'glm-4-flash',
-    models: ['glm-4-flash', 'glm-4-plus', 'glm-4-air', 'glm-4']
+    suggestedModels: 'glm-4-flash, glm-4-plus, glm-4-air, glm-4'
   }
 };
+
+// Suggested image generation models for display
+export const SUGGESTED_IMAGE_MODELS = 'gemini-2.0-flash-exp, gemini-2.0-flash, imagen-3.0-generate-002';
 
 // ============================================================
 // Input Source Types
 // ============================================================
 
-export type InputSource = 'fullNote' | 'selection';
+export type InputSource = 'fullNote' | 'selection' | 'custom';
 
 // ============================================================
 // Image Style Types
@@ -180,19 +183,18 @@ export const LANGUAGE_NAMES: Record<PreferredLanguage, string> = {
 // Embed Types
 // ============================================================
 
-export type EmbedSize = 'compact' | 'medium' | 'large' | 'fullwidth';
+export type EmbedSize = 'small' | 'medium' | 'large' | 'fullwidth';
 
 export interface EmbedSizeConfig {
   name: string;
   width: string;
-  height: string;
 }
 
 export const EMBED_SIZES: Record<EmbedSize, EmbedSizeConfig> = {
-  compact: { name: 'Compact', width: '400px', height: '300px' },
-  medium: { name: 'Medium', width: '600px', height: '450px' },
-  large: { name: 'Large', width: '800px', height: '600px' },
-  fullwidth: { name: 'Full Width', width: '100%', height: '600px' }
+  small: { name: '400px', width: '400px' },
+  medium: { name: '800px', width: '800px' },
+  large: { name: '1200px', width: '1200px' },
+  fullwidth: { name: '100%', width: '100%' }
 };
 
 export interface EmbedPosition {
@@ -401,6 +403,7 @@ export interface GeminiApiResponse {
 export interface QuickOptionsResult {
   confirmed: boolean;
   inputSource: InputSource;
+  customInputText: string; // Custom input text when inputSource is 'custom'
   imageStyle: ImageStyle;
   infographicSubStyle: InfographicSubStyle;
   imageSize: ImageSize;

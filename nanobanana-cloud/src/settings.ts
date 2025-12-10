@@ -3,6 +3,7 @@ import type NanoBananaCloudPlugin from './main';
 import {
   AIProvider,
   PROVIDER_CONFIGS,
+  SUGGESTED_IMAGE_MODELS,
   ImageStyle,
   IMAGE_STYLES,
   InfographicSubStyle,
@@ -147,23 +148,21 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         });
       });
 
-    // Model Selection
+    // Model Selection - Text input with suggestions
     const currentProvider = this.plugin.settings.selectedProvider;
     const providerConfig = PROVIDER_CONFIGS[currentProvider];
 
     new Setting(containerEl)
       .setName('Prompt Model')
-      .setDesc(`Select model for ${providerConfig.name}`)
-      .addDropdown(dropdown => {
-        providerConfig.models.forEach(model => {
-          dropdown.addOption(model, model);
-        });
-        dropdown.setValue(this.plugin.settings.promptModel);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.promptModel = value;
+      .setDesc(`Model to use for prompt generation. Suggestions: ${providerConfig.suggestedModels}`)
+      .addText(text => text
+        .setPlaceholder(providerConfig.defaultModel)
+        .setValue(this.plugin.settings.promptModel)
+        .onChange(async (value) => {
+          this.plugin.settings.promptModel = value || providerConfig.defaultModel;
           await this.plugin.saveSettings();
-        });
-      });
+        })
+      );
 
     // API Keys Section
     new Setting(containerEl)
@@ -236,20 +235,18 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       .setName('Image Generation Settings')
       .setHeading();
 
-    // Image Model
+    // Image Model - Text input with suggestions
     new Setting(containerEl)
-      .setName('Image Generation Model')
-      .setDesc('Gemini model for image generation')
-      .addDropdown(dropdown => {
-        PROVIDER_CONFIGS.google.models.forEach(model => {
-          dropdown.addOption(model, model);
-        });
-        dropdown.setValue(this.plugin.settings.imageModel);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.imageModel = value;
+      .setName('Image Model')
+      .setDesc(`Google Gemini model for image generation. Must support image output. Suggestions: ${SUGGESTED_IMAGE_MODELS}`)
+      .addText(text => text
+        .setPlaceholder('gemini-2.0-flash-exp')
+        .setValue(this.plugin.settings.imageModel)
+        .onChange(async (value) => {
+          this.plugin.settings.imageModel = value || 'gemini-2.0-flash-exp';
           await this.plugin.saveSettings();
-        });
-      });
+        })
+      );
 
     // Image Style
     new Setting(containerEl)
@@ -397,6 +394,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       .addDropdown(dropdown => {
         dropdown.addOption('fullNote', 'Full Note (embed at cursor)');
         dropdown.addOption('selection', 'Selection (embed after selection)');
+        dropdown.addOption('custom', 'Custom Input (enter text manually)');
         dropdown.setValue(this.plugin.settings.defaultInputSource);
         dropdown.onChange(async (value: InputSource) => {
           this.plugin.settings.defaultInputSource = value;
@@ -409,7 +407,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       .setDesc('Default size for embedded images')
       .addDropdown(dropdown => {
         Object.entries(EMBED_SIZES).forEach(([key, config]) => {
-          dropdown.addOption(key, `${config.name} (${config.width})`);
+          dropdown.addOption(key, config.name);
         });
         dropdown.setValue(this.plugin.settings.embedSize);
         dropdown.onChange(async (value: EmbedSize) => {
