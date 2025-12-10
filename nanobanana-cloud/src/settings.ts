@@ -240,10 +240,10 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       .setName('Image Model')
       .setDesc(`Google Gemini model for image generation. Must support image output. Suggestions: ${SUGGESTED_IMAGE_MODELS}`)
       .addText(text => text
-        .setPlaceholder('gemini-2.0-flash-exp')
+        .setPlaceholder('gemini-3-pro-image-preview')
         .setValue(this.plugin.settings.imageModel)
         .onChange(async (value) => {
-          this.plugin.settings.imageModel = value || 'gemini-2.0-flash-exp';
+          this.plugin.settings.imageModel = value || 'gemini-3-pro-image-preview';
           await this.plugin.saveSettings();
         })
       );

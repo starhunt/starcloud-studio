@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   defaultInputSource: 'fullNote',
 
   // Image Generation
-  imageModel: 'gemini-2.0-flash-exp',
+  imageModel: 'gemini-3-pro-image-preview',
   imageStyle: 'infographic',
   infographicSubStyle: 'general',
   imageSize: '4K',

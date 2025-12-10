@@ -37,10 +37,10 @@ export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
     suggestedModels: 'grok-4-1-fast, grok-beta, grok-2-latest'
   },
   glm: {
-    name: 'GLM (智谱AI)',
+    name: 'GLM (z.ai)',
     endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-    defaultModel: 'glm-4-flash',
-    suggestedModels: 'glm-4-flash, glm-4-plus, glm-4-air, glm-4'
+    defaultModel: 'glm-4.6',
+    suggestedModels: 'glm-4.6, glm-4-flash, glm-4-plus, glm-4-air, glm-4'
   }
 };
 
