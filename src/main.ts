@@ -1,22 +1,26 @@
 import { Plugin, MarkdownView, Notice, TFile } from 'obsidian';
-import { NanoBananaSettings, GenerationError, ProgressState, ImageStyle, ImageSize, CartoonCuts } from './types';
+import { NanoBananaSettings, GenerationError, ProgressState, ImageStyle, ImageSize, CartoonCuts, SlidePromptType } from './types';
 import { DEFAULT_SETTINGS } from './settingsData';
 import { NanoBananaSettingTab } from './settings';
 import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
 import { FileService } from './services/fileService';
+import { SlideService } from './services/slideService';
 import { ProgressModal } from './progressModal';
 import { PreviewModal, PreviewModalResult } from './previewModal';
 import { QuickOptionsModal, QuickOptionsResult } from './quickOptionsModal';
+import { SlideOptionsModal, SlideOptionsResult } from './slideOptionsModal';
 
 export default class NanoBananaPlugin extends Plugin {
   settings: NanoBananaSettings;
   private promptService: PromptService;
   private imageService: ImageService;
   private fileService: FileService;
+  private slideService: SlideService;
   private lastPrompt: string = '';
   private lastNoteFile: TFile | null = null;
   private isGenerating: boolean = false;
+  private isGeneratingSlide: boolean = false;
 
   async onload() {
     await this.loadSettings();
@@ -25,6 +29,7 @@ export default class NanoBananaPlugin extends Plugin {
     this.promptService = new PromptService();
     this.imageService = new ImageService();
     this.fileService = new FileService(this.app);
+    this.slideService = new SlideService();
 
     // Register commands
     this.addCommand({
@@ -43,6 +48,12 @@ export default class NanoBananaPlugin extends Plugin {
       id: 'regenerate-last-poster',
       name: 'Regenerate last poster',
       callback: () => this.regenerateLastPoster()
+    });
+
+    this.addCommand({
+      id: 'generate-slide',
+      name: 'Generate interactive slide',
+      callback: () => this.generateSlide()
     });
 
     // Register settings tab
@@ -386,6 +397,179 @@ export default class NanoBananaPlugin extends Plugin {
     } finally {
       this.isGenerating = false;
     }
+  }
+
+  /**
+   * Slide generation flow
+   */
+  async generateSlide(): Promise<void> {
+    if (this.isGeneratingSlide) {
+      new Notice('Slide generation already in progress');
+      return;
+    }
+
+    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!activeView || !activeView.file) {
+      new Notice('Please open a note first');
+      return;
+    }
+
+    const noteFile = activeView.file;
+    const noteContent = await this.app.vault.read(noteFile);
+
+    // Get API key for selected provider
+    const providerKey = this.getProviderApiKey();
+    if (!providerKey) {
+      new Notice(`${this.settings.selectedProvider} API key is not configured. Please check settings.`);
+      return;
+    }
+
+    // Show Slide Options Modal
+    const slideOptions = await this.showSlideOptionsModal();
+    if (!slideOptions.confirmed) {
+      return;
+    }
+
+    // Determine input content
+    const inputContent = slideOptions.inputSource === 'note'
+      ? noteContent
+      : slideOptions.customText;
+
+    if (!inputContent.trim()) {
+      new Notice(slideOptions.inputSource === 'note'
+        ? 'Note is empty. Please add some content first.'
+        : 'Please enter some text.');
+      return;
+    }
+
+    this.isGeneratingSlide = true;
+    let progressModal: ProgressModal | null = null;
+
+    try {
+      // Show progress modal if enabled
+      if (this.settings.showProgressModal) {
+        progressModal = new ProgressModal(this.app, this.settings.preferredLanguage);
+        progressModal.open();
+      }
+
+      // Step 1: Preparing content
+      this.updateProgress(progressModal, {
+        step: 'analyzing',
+        progress: 10,
+        message: '콘텐츠 분석 중...'
+      });
+
+      let finalContent = inputContent;
+
+      // Step 2: Preview (if enabled)
+      if (this.settings.showSlidePreviewBeforeGeneration) {
+        if (progressModal) {
+          progressModal.close();
+          progressModal = null;
+        }
+
+        const previewResult = await this.showPreviewModal(finalContent);
+
+        if (!previewResult.confirmed) {
+          this.isGeneratingSlide = false;
+          return;
+        }
+
+        if (previewResult.regenerate) {
+          this.isGeneratingSlide = false;
+          return this.generateSlide();
+        }
+
+        finalContent = previewResult.prompt;
+
+        if (this.settings.showProgressModal) {
+          progressModal = new ProgressModal(this.app, this.settings.preferredLanguage);
+          progressModal.open();
+        }
+      }
+
+      // Step 3: Generate HTML slide
+      this.updateProgress(progressModal, {
+        step: 'generating-slide',
+        progress: 40,
+        message: '슬라이드 생성 중... (시간이 걸릴 수 있습니다)'
+      });
+
+      const slideResult = await this.executeWithRetry(async () => {
+        return await this.slideService.generateSlide(
+          finalContent,
+          this.settings.selectedProvider,
+          this.settings.promptModel,
+          providerKey,
+          slideOptions.selectedPromptConfig.prompt
+        );
+      });
+
+      // Step 4: Save slide
+      this.updateProgress(progressModal, {
+        step: 'saving',
+        progress: 80,
+        message: '슬라이드 저장 중...'
+      });
+
+      const slidePath = await this.fileService.saveSlide(
+        slideResult.htmlContent,
+        noteFile,
+        this.settings.slidesRootPath,
+        slideResult.title
+      );
+
+      // Step 5: Embed in note
+      this.updateProgress(progressModal, {
+        step: 'embedding',
+        progress: 95,
+        message: '노트에 삽입 중...'
+      });
+
+      await this.fileService.embedSlideInNote(noteFile, slidePath);
+
+      // Success
+      this.updateProgress(progressModal, {
+        step: 'complete',
+        progress: 100,
+        message: '완료!'
+      });
+
+      if (progressModal) {
+        progressModal.showSuccess(slidePath);
+      } else {
+        new Notice(`✅ slide generated: ${slidePath}`);
+      }
+
+    } catch (error) {
+      const genError = error as GenerationError;
+
+      if (progressModal) {
+        progressModal.showError(genError);
+      } else {
+        new Notice(`❌ slide generation failed: ${genError.message}`);
+      }
+
+      console.error('Slide generation error:', error);
+    } finally {
+      this.isGeneratingSlide = false;
+    }
+  }
+
+  /**
+   * Show slide options modal for input source and prompt type selection
+   */
+  private showSlideOptionsModal(): Promise<SlideOptionsResult> {
+    return new Promise((resolve) => {
+      const modal = new SlideOptionsModal(
+        this.app,
+        this.settings.defaultSlidePromptType,
+        this.settings.customSlidePrompts,
+        (result) => resolve(result),
+        this.settings.preferredLanguage
+      );
+      modal.open();
+    });
   }
 
   /**

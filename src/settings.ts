@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import NanoBananaPlugin from './main';
-import { AIProvider, ImageStyle, ImageSize, PreferredLanguage, CartoonCuts, PROVIDER_CONFIGS } from './types';
+import { AIProvider, ImageStyle, ImageSize, PreferredLanguage, CartoonCuts, SlidePromptType, PROVIDER_CONFIGS } from './types';
+import { BUILTIN_SLIDE_PROMPTS } from './settingsData';
 
 export class NanoBananaSettingTab extends PluginSettingTab {
   plugin: NanoBananaPlugin;
@@ -298,6 +299,55 @@ export class NanoBananaSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.customPromptPrefix)
         .onChange(async (value) => {
           this.plugin.settings.customPromptPrefix = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // ==================== Slide Generation Section ====================
+    new Setting(containerEl).setName('Slide generation').setHeading();
+
+    new Setting(containerEl)
+      .setName('Slides folder')
+      .setDesc('Root folder for saving generated HTML slides. Slides are organized by year/month.')
+      .addText(text => text
+        .setPlaceholder('999-Slides')
+        .setValue(this.plugin.settings.slidesRootPath)
+        .onChange(async (value) => {
+          this.plugin.settings.slidesRootPath = value || '999-Slides';
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Default slide prompt')
+      .setDesc('System prompt used for slide generation.')
+      .addDropdown(dropdown => {
+        // Add built-in prompts
+        for (const [key, config] of Object.entries(BUILTIN_SLIDE_PROMPTS)) {
+          if (key !== 'custom') {
+            dropdown.addOption(key, config.name);
+          }
+        }
+        // Add custom prompts from settings
+        for (const custom of this.plugin.settings.customSlidePrompts) {
+          dropdown.addOption(custom.id, `${custom.name} (Custom)`);
+        }
+        dropdown
+          .setValue(this.plugin.settings.defaultSlidePromptType)
+          .onChange(async (value: SlidePromptType) => {
+            this.plugin.settings.defaultSlidePromptType = value;
+            await this.plugin.saveSettings();
+          });
+        return dropdown;
+      });
+
+    new Setting(containerEl)
+      .setName('Show slide preview')
+      .setDesc('Show the content preview before generating the slide.')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showSlidePreviewBeforeGeneration)
+        .onChange(async (value) => {
+          this.plugin.settings.showSlidePreviewBeforeGeneration = value;
           await this.plugin.saveSettings();
         })
       );

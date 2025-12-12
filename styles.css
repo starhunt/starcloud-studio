@@ -301,6 +301,51 @@
   border-bottom: none;
 }
 
+/* ==================== Slide Options Modal ==================== */
+.nanobanana-slide-options {
+  padding: 20px;
+  min-width: 450px;
+}
+
+.nanobanana-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.nanobanana-custom-text-container {
+  margin: 15px 0;
+  padding: 15px;
+  border-radius: 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.nanobanana-custom-text-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  font-family: var(--font-interface);
+  font-size: 0.95em;
+  resize: vertical;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.nanobanana-custom-text-textarea:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+.nanobanana-custom-text-textarea::placeholder {
+  color: var(--text-muted);
+}
+
 /* ==================== Utility Classes ==================== */
 .nanobanana-hidden {
   display: none !important;
@@ -357,7 +402,8 @@
 /* ==================== Mobile Responsive ==================== */
 @media (max-width: 600px) {
   .nanobanana-progress-modal,
-  .nanobanana-preview-modal {
+  .nanobanana-preview-modal,
+  .nanobanana-slide-options {
     min-width: unset;
     width: 100%;
     padding: 15px;
@@ -369,5 +415,9 @@
 
   .nanobanana-button-container button {
     width: 100%;
+  }
+
+  .nanobanana-custom-text-textarea {
+    min-height: 150px;
   }
 }

@@ -9,6 +9,26 @@ export type ImageSize = '1K' | '2K' | '4K';
 
 export type CartoonCuts = '4' | '6' | '8' | 'custom';
 
+// Slide generation types
+export type SlidePromptType = 'notebooklm-summary' | 'custom';
+
+export type SlideInputSource = 'note' | 'custom-text';
+
+export interface SlidePromptConfig {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  isBuiltIn: boolean;
+}
+
+export interface SlideGenerationResult {
+  htmlContent: string;
+  model: string;
+  provider: AIProvider;
+  title: string;
+}
+
 // Plugin settings interface
 export interface NanoBananaSettings {
   // API Keys
@@ -37,6 +57,12 @@ export interface NanoBananaSettings {
 
   // Advanced
   customPromptPrefix: string;
+
+  // Slide Generation
+  slidesRootPath: string;
+  defaultSlidePromptType: SlidePromptType;
+  customSlidePrompts: SlidePromptConfig[];
+  showSlidePreviewBeforeGeneration: boolean;
 }
 
 // Progress states
@@ -45,6 +71,7 @@ export type ProgressStep =
   | 'generating-prompt'
   | 'preview'
   | 'generating-image'
+  | 'generating-slide'
   | 'saving'
   | 'embedding'
   | 'complete'

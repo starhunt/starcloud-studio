@@ -129,6 +129,138 @@ export class FileService {
     return mimeMap[mimeType] || 'png';
   }
 
+  /**
+   * Save HTML slide to vault with year/month directory structure
+   * Path: {slidesRootPath}/{year}/{month}/yyyyMMddHHmmss_title.html
+   */
+  async saveSlide(
+    htmlContent: string,
+    noteFile: TFile,
+    slidesRootPath: string,
+    title: string
+  ): Promise<string> {
+    try {
+      const now = new Date();
+      const year = now.getFullYear().toString();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const timestamp = this.formatTimestamp(now);
+
+      // Convert title to safe filename
+      const safeTitle = this.sanitizeTitleForFilename(title);
+      const fileName = `${timestamp}_${safeTitle}.html`;
+
+      // Build path: {root}/{year}/{month}/filename.html
+      const folderPath = normalizePath(`${slidesRootPath}/${year}/${month}`);
+
+      // Ensure folder structure exists (recursive)
+      await this.ensureFolderExistsRecursive(folderPath);
+
+      // Full path for the slide
+      const slidePath = normalizePath(`${folderPath}/${fileName}`);
+
+      // Save HTML file
+      await this.app.vault.create(slidePath, htmlContent);
+
+      return slidePath;
+    } catch (error) {
+      throw this.createError('SAVE_ERROR', `Failed to save slide: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Embed slide in note using iframe
+   */
+  async embedSlideInNote(noteFile: TFile, slidePath: string): Promise<void> {
+    try {
+      const content = await this.app.vault.read(noteFile);
+
+      // Create iframe embed syntax
+      // Use app://local/ protocol for Obsidian to load local files
+      const vaultPath = (this.app.vault.adapter as any).basePath || '';
+      const fullPath = `${vaultPath}/${slidePath}`.replace(/\\/g, '/');
+      const embedSyntax = `<iframe src="app://local/${encodeURI(fullPath)}" width="100%" height="800px" style="border: 1px solid var(--background-modifier-border); border-radius: 8px;"></iframe>\n\n`;
+
+      // Check if note has frontmatter
+      const frontmatterMatch = content.match(/^---\n[\s\S]*?\n---\n/);
+
+      let newContent: string;
+
+      if (frontmatterMatch) {
+        // Insert after frontmatter
+        const frontmatter = frontmatterMatch[0];
+        const restContent = content.slice(frontmatter.length);
+
+        // Check for existing slide embed (replace it)
+        const existingEmbed = restContent.match(/^<iframe src="[^"]*\.html"[^>]*><\/iframe>\n\n/);
+
+        if (existingEmbed) {
+          newContent = frontmatter + embedSyntax + restContent.slice(existingEmbed[0].length);
+        } else {
+          newContent = frontmatter + embedSyntax + restContent;
+        }
+      } else {
+        const existingEmbed = content.match(/^<iframe src="[^"]*\.html"[^>]*><\/iframe>\n\n/);
+
+        if (existingEmbed) {
+          newContent = embedSyntax + content.slice(existingEmbed[0].length);
+        } else {
+          newContent = embedSyntax + content;
+        }
+      }
+
+      await this.app.vault.modify(noteFile, newContent);
+    } catch (error) {
+      throw this.createError('SAVE_ERROR', `Failed to embed slide: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Format date to yyyyMMddHHmmss
+   */
+  private formatTimestamp(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  }
+
+  /**
+   * Sanitize title for use in filename
+   */
+  private sanitizeTitleForFilename(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\s가-힣\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 50)
+      .replace(/^-|-$/g, '')
+      || 'untitled';
+  }
+
+  /**
+   * Ensure folder exists recursively (creates parent folders)
+   */
+  private async ensureFolderExistsRecursive(folderPath: string): Promise<void> {
+    const normalizedPath = normalizePath(folderPath);
+    const parts = normalizedPath.split('/');
+
+    let currentPath = '';
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      const folder = this.app.vault.getAbstractFileByPath(currentPath);
+
+      if (!folder) {
+        await this.app.vault.createFolder(currentPath);
+      } else if (!(folder instanceof TFolder)) {
+        throw this.createError('SAVE_ERROR', `${currentPath} exists but is not a folder`);
+      }
+    }
+  }
+
   private createError(type: GenerationError['type'], message: string): GenerationErrorClass {
     return new GenerationErrorClass(type, message, false);
   }

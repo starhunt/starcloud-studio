@@ -11,6 +11,7 @@ export interface UIMessages {
   stepAnalyzing: string;
   stepGeneratingPrompt: string;
   stepGeneratingImage: string;
+  stepGeneratingSlide: string;
   stepSaving: string;
   stepEmbedding: string;
 
@@ -51,6 +52,12 @@ export interface UIMessages {
   previewPromptModel: string;
   previewImageModel: string;
   previewStyle: string;
+
+  // Slide Generation
+  slideProgressTitle: string;
+  slideEstimatedTime: string;
+  slideSuccessTitle: string;
+  slideSuccessSaved: string;
 }
 
 export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
@@ -64,6 +71,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: '노트 분석',
     stepGeneratingPrompt: '프롬프트 생성',
     stepGeneratingImage: '이미지 생성',
+    stepGeneratingSlide: '슬라이드 생성',
     stepSaving: '파일 저장',
     stepEmbedding: '노트에 삽입',
 
@@ -103,7 +111,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 다시 생성',
     previewPromptModel: '🤖 프롬프트 모델',
     previewImageModel: '🖼️ 이미지 모델',
-    previewStyle: '📊 스타일'
+    previewStyle: '📊 스타일',
+
+    // Slide Generation
+    slideProgressTitle: '📑 슬라이드 생성 중...',
+    slideEstimatedTime: '⏱️ 예상 소요 시간: 약 30-60초',
+    slideSuccessTitle: '✅ 슬라이드 생성 완료!',
+    slideSuccessSaved: '📁 저장 위치'
   },
 
   en: {
@@ -116,6 +130,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: 'Analyzing note',
     stepGeneratingPrompt: 'Generating prompt',
     stepGeneratingImage: 'Generating image',
+    stepGeneratingSlide: 'Generating slide',
     stepSaving: 'Saving file',
     stepEmbedding: 'Embedding in note',
 
@@ -155,7 +170,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 regenerate',
     previewPromptModel: '🤖 prompt model',
     previewImageModel: '🖼️ image model',
-    previewStyle: '📊 style'
+    previewStyle: '📊 style',
+
+    // Slide Generation
+    slideProgressTitle: '📑 generating slide...',
+    slideEstimatedTime: '⏱️ estimated time: about 30-60 seconds',
+    slideSuccessTitle: '✅ slide created!',
+    slideSuccessSaved: '📁 saved to'
   },
 
   ja: {
@@ -168,6 +189,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: 'ノート分析',
     stepGeneratingPrompt: 'プロンプト生成',
     stepGeneratingImage: '画像生成',
+    stepGeneratingSlide: 'スライド生成',
     stepSaving: 'ファイル保存',
     stepEmbedding: 'ノートに挿入',
 
@@ -207,7 +229,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 再生成',
     previewPromptModel: '🤖 プロンプトモデル',
     previewImageModel: '🖼️ 画像モデル',
-    previewStyle: '📊 スタイル'
+    previewStyle: '📊 スタイル',
+
+    // Slide Generation
+    slideProgressTitle: '📑 スライド生成中...',
+    slideEstimatedTime: '⏱️ 推定時間：約30〜60秒',
+    slideSuccessTitle: '✅ スライド作成完了！',
+    slideSuccessSaved: '📁 保存先'
   },
 
   zh: {
@@ -220,6 +248,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: '分析笔记',
     stepGeneratingPrompt: '生成提示词',
     stepGeneratingImage: '生成图片',
+    stepGeneratingSlide: '生成幻灯片',
     stepSaving: '保存文件',
     stepEmbedding: '插入笔记',
 
@@ -259,7 +288,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 重新生成',
     previewPromptModel: '🤖 提示词模型',
     previewImageModel: '🖼️ 图片模型',
-    previewStyle: '📊 风格'
+    previewStyle: '📊 风格',
+
+    // Slide Generation
+    slideProgressTitle: '📑 正在生成幻灯片...',
+    slideEstimatedTime: '⏱️ 预计时间：约30-60秒',
+    slideSuccessTitle: '✅ 幻灯片创建完成！',
+    slideSuccessSaved: '📁 保存位置'
   },
 
   es: {
@@ -272,6 +307,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: 'Analizando nota',
     stepGeneratingPrompt: 'Generando prompt',
     stepGeneratingImage: 'Generando imagen',
+    stepGeneratingSlide: 'Generando diapositiva',
     stepSaving: 'Guardando archivo',
     stepEmbedding: 'Insertando en nota',
 
@@ -311,7 +347,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 regenerar',
     previewPromptModel: '🤖 modelo de prompt',
     previewImageModel: '🖼️ modelo de imagen',
-    previewStyle: '📊 estilo'
+    previewStyle: '📊 estilo',
+
+    // Slide Generation
+    slideProgressTitle: '📑 generando diapositiva...',
+    slideEstimatedTime: '⏱️ Tiempo estimado: aproximadamente 30-60 segundos',
+    slideSuccessTitle: '✅ ¡diapositiva creada!',
+    slideSuccessSaved: '📁 Guardado en'
   },
 
   fr: {
@@ -324,6 +366,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: 'Analyse de la note',
     stepGeneratingPrompt: 'Génération du prompt',
     stepGeneratingImage: 'Génération de l\'image',
+    stepGeneratingSlide: 'Génération de la diapositive',
     stepSaving: 'Enregistrement du fichier',
     stepEmbedding: 'Insertion dans la note',
 
@@ -363,7 +406,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 régénérer',
     previewPromptModel: '🤖 modèle de prompt',
     previewImageModel: '🖼️ modèle d\'image',
-    previewStyle: '📊 style'
+    previewStyle: '📊 style',
+
+    // Slide Generation
+    slideProgressTitle: '📑 génération de la diapositive...',
+    slideEstimatedTime: '⏱️ Temps estimé : environ 30-60 secondes',
+    slideSuccessTitle: '✅ diapositive créée !',
+    slideSuccessSaved: '📁 Enregistré dans'
   },
 
   de: {
@@ -376,6 +425,7 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     stepAnalyzing: 'Notiz analysieren',
     stepGeneratingPrompt: 'Prompt generieren',
     stepGeneratingImage: 'Bild generieren',
+    stepGeneratingSlide: 'Folie generieren',
     stepSaving: 'Datei speichern',
     stepEmbedding: 'In Notiz einfügen',
 
@@ -415,7 +465,13 @@ export const MESSAGES: Record<PreferredLanguage, UIMessages> = {
     previewRegenerate: '🔄 regenerieren',
     previewPromptModel: '🤖 prompt-Modell',
     previewImageModel: '🖼️ bildmodell',
-    previewStyle: '📊 stil'
+    previewStyle: '📊 stil',
+
+    // Slide Generation
+    slideProgressTitle: '📑 folie wird erstellt...',
+    slideEstimatedTime: '⏱️ Geschätzte Zeit: etwa 30-60 Sekunden',
+    slideSuccessTitle: '✅ folie erstellt!',
+    slideSuccessSaved: '📁 Gespeichert in'
   }
 };
 
