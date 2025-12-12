@@ -61,20 +61,62 @@ export class GitService {
 
       // Push with token authentication
       console.log('[GitService] Pushing to origin/' + branch + '...');
-      try {
-        if (token) {
-          await this.pushWithToken(repoPath, branch, token);
-        } else {
-          await this.execGit(`push origin ${branch}`, repoPath);
+      console.log('[GitService] Token configured:', token ? 'yes (length: ' + token.length + ')' : 'no');
+
+      let pushSuccess = false;
+      let pushError: Error | null = null;
+
+      // Check remote URL type first
+      const { stdout: remoteUrl } = await this.execGit('remote get-url origin', repoPath);
+      const cleanRemoteUrl = remoteUrl.trim();
+      const isSSH = cleanRemoteUrl.startsWith('git@');
+      console.log('[GitService] Remote URL type:', isSSH ? 'SSH' : 'HTTPS');
+
+      // For SSH remotes, use standard push (relies on SSH keys)
+      // For HTTPS remotes with token, use token-based push
+      if (isSSH) {
+        console.log('[GitService] Using SSH push (git push origin ' + branch + ')');
+        try {
+          const pushResult = await this.execGit(`push origin ${branch}`, repoPath);
+          console.log('[GitService] Push stdout:', pushResult.stdout);
+          console.log('[GitService] Push stderr:', pushResult.stderr);
+          pushSuccess = true;
+          console.log('[GitService] SSH push successful');
+        } catch (err) {
+          pushError = err instanceof Error ? err : new Error(String(err));
+          console.error('[GitService] SSH push failed:', pushError.message);
         }
-        console.log('[GitService] Push successful');
-      } catch (pushError) {
-        const pushErrorMsg = pushError instanceof Error ? pushError.message : String(pushError);
-        console.error('[GitService] Push failed:', pushErrorMsg);
+      } else if (token && token.trim()) {
+        // HTTPS remote with token
+        console.log('[GitService] Attempting token-based HTTPS push...');
+        try {
+          await this.pushWithToken(repoPath, branch, token.trim());
+          pushSuccess = true;
+          console.log('[GitService] Token-based push successful');
+        } catch (err) {
+          pushError = err instanceof Error ? err : new Error(String(err));
+          console.error('[GitService] Token-based push failed:', pushError.message);
+        }
+      } else {
+        // HTTPS remote without token - try standard push
+        console.log('[GitService] Attempting standard HTTPS push...');
+        try {
+          const pushResult = await this.execGit(`push origin ${branch}`, repoPath);
+          console.log('[GitService] Push stdout:', pushResult.stdout);
+          console.log('[GitService] Push stderr:', pushResult.stderr);
+          pushSuccess = true;
+          console.log('[GitService] Standard push successful');
+        } catch (err) {
+          pushError = err instanceof Error ? err : new Error(String(err));
+          console.error('[GitService] Standard push failed:', pushError.message);
+        }
+      }
+
+      if (!pushSuccess && pushError) {
         // Return partial success - commit worked but push failed
         return {
           success: false,
-          message: `Committed but push failed: ${pushErrorMsg}. Try: git push origin ${branch}`,
+          message: `Committed but push failed: ${pushError.message}. Try: git push origin ${branch}`,
           url: this.generatePagesUrl(relativePath)
         };
       }
@@ -122,20 +164,22 @@ export class GitService {
    */
   private async pushWithToken(repoPath: string, branch: string, token: string): Promise<void> {
     // Get the current remote URL
+    console.log('[GitService] Getting remote URL...');
     const { stdout: remoteUrl } = await this.execGit('remote get-url origin', repoPath);
     const cleanUrl = remoteUrl.trim();
+    console.log('[GitService] Remote URL:', cleanUrl.replace(/\/\/[^@]+@/, '//***@')); // Hide token in log
 
     // Parse the URL and inject token
     let authenticatedUrl: string;
 
     if (cleanUrl.startsWith('https://')) {
-      // https://github.com/user/repo.git -> https://token@github.com/user/repo.git
-      authenticatedUrl = cleanUrl.replace('https://', `https://${token}@`);
+      // https://github.com/user/repo.git -> https://x-access-token:token@github.com/user/repo.git
+      authenticatedUrl = cleanUrl.replace('https://', `https://x-access-token:${token}@`);
     } else if (cleanUrl.startsWith('git@')) {
-      // git@github.com:user/repo.git -> https://token@github.com/user/repo.git
+      // git@github.com:user/repo.git -> https://x-access-token:token@github.com/user/repo.git
       const match = cleanUrl.match(/git@([^:]+):(.+)/);
       if (match) {
-        authenticatedUrl = `https://${token}@${match[1]}/${match[2]}`;
+        authenticatedUrl = `https://x-access-token:${token}@${match[1]}/${match[2]}`;
       } else {
         throw new Error('Unable to parse SSH remote URL');
       }
@@ -143,8 +187,9 @@ export class GitService {
       throw new Error(`Unsupported remote URL format: ${cleanUrl}`);
     }
 
-    // Push using the authenticated URL
-    await this.execGit(`push ${authenticatedUrl} ${branch}`, repoPath);
+    console.log('[GitService] Pushing with token authentication to branch:', branch);
+    // Quote the URL to handle special characters in token
+    await this.execGit(`push "${authenticatedUrl}" "${branch}"`, repoPath);
   }
 
   /**
