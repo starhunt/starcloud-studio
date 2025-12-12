@@ -54,6 +54,9 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
 
     // Slide Generation Section
     this.createSlideGenerationSection(containerEl);
+
+    // Git Integration Section
+    this.createGitIntegrationSection(containerEl);
   }
 
   private createDriveConnectionSection(containerEl: HTMLElement) {
@@ -559,6 +562,110 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
           modal.open();
         })
       );
+  }
+
+  private createGitIntegrationSection(containerEl: HTMLElement) {
+    new Setting(containerEl)
+      .setName('Git Integration (GitHub Pages)')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName('Enable Git Integration')
+      .setDesc('Automatically commit and push slides to GitHub for viewing via GitHub Pages')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.gitEnabled ?? false)
+        .onChange(async (value) => {
+          this.plugin.settings.gitEnabled = value;
+          await this.plugin.saveSettings();
+          this.display(); // Refresh to show/hide dependent settings
+        })
+      );
+
+    // Only show these settings if git is enabled
+    if (this.plugin.settings.gitEnabled) {
+      new Setting(containerEl)
+        .setName('Git Repository Path')
+        .setDesc('Absolute path to the git repository (e.g., /Users/username/Documents/my-slides)')
+        .addText(text => text
+          .setPlaceholder('/path/to/git/repo')
+          .setValue(this.plugin.settings.gitRepoPath || '')
+          .onChange(async (value) => {
+            this.plugin.settings.gitRepoPath = value;
+            await this.plugin.saveSettings();
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('Git Branch')
+        .setDesc('Branch to push commits to')
+        .addText(text => text
+          .setPlaceholder('main')
+          .setValue(this.plugin.settings.gitBranch || 'main')
+          .onChange(async (value) => {
+            this.plugin.settings.gitBranch = value || 'main';
+            await this.plugin.saveSettings();
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('GitHub Personal Access Token')
+        .setDesc('PAT for authentication (stored locally, never sent to external servers except GitHub)')
+        .addText(text => text
+          .setPlaceholder('ghp_xxxxxxxxxxxx')
+          .setValue(this.plugin.settings.githubToken || '')
+          .onChange(async (value) => {
+            this.plugin.settings.githubToken = value;
+            await this.plugin.saveSettings();
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('GitHub Pages URL')
+        .setDesc('Base URL of your GitHub Pages site (e.g., https://username.github.io/repo)')
+        .addText(text => text
+          .setPlaceholder('https://username.github.io/repo')
+          .setValue(this.plugin.settings.githubPagesUrl || '')
+          .onChange(async (value) => {
+            this.plugin.settings.githubPagesUrl = value;
+            await this.plugin.saveSettings();
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('Auto Commit & Push')
+        .setDesc('Automatically commit and push after generating a slide')
+        .addToggle(toggle => toggle
+          .setValue(this.plugin.settings.autoCommitPush ?? false)
+          .onChange(async (value) => {
+            this.plugin.settings.autoCommitPush = value;
+            await this.plugin.saveSettings();
+          })
+        );
+
+      // Test connection button
+      new Setting(containerEl)
+        .setName('Test Git Connection')
+        .setDesc('Verify that the git repository and settings are configured correctly')
+        .addButton(button => button
+          .setButtonText('Test Connection')
+          .onClick(async () => {
+            const { GitService } = await import('./services/gitService');
+            const gitService = new GitService({
+              repoPath: this.plugin.settings.gitRepoPath,
+              branch: this.plugin.settings.gitBranch,
+              token: this.plugin.settings.githubToken,
+              pagesUrl: this.plugin.settings.githubPagesUrl
+            });
+
+            const result = await gitService.testConnection();
+            if (result.success) {
+              new Notice(`✅ ${result.message}`);
+            } else {
+              new Notice(`❌ ${result.message}`);
+            }
+          })
+        );
+    }
   }
 }
 

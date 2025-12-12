@@ -15,6 +15,7 @@ import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
 import { SlideService } from './services/slideService';
 import { FileService } from './services/fileService';
+import { GitService } from './services/gitService';
 import { GoogleOAuthFlow } from './services/googleOAuthFlow';
 import { DriveUploadService } from './services/driveUploadService';
 import { EmbedService } from './services/embedService';
@@ -669,7 +670,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       // Save slide
       progressModal?.updateProgress({
         step: 'saving',
-        progress: 80,
+        progress: 60,
         message: '슬라이드 저장 중...'
       });
 
@@ -680,6 +681,38 @@ export default class NanoBananaCloudPlugin extends Plugin {
         result.title
       );
 
+      // Git commit and push if enabled
+      let githubPagesUrl: string | undefined;
+
+      if (this.settings.gitEnabled && this.settings.autoCommitPush) {
+        progressModal?.updateProgress({
+          step: 'uploading',
+          progress: 75,
+          message: 'GitHub에 커밋 & 푸시 중...'
+        });
+
+        const absolutePath = this.fileService.getAbsolutePath(slidePath);
+        const gitService = new GitService({
+          repoPath: this.settings.gitRepoPath,
+          branch: this.settings.gitBranch,
+          token: this.settings.githubToken,
+          pagesUrl: this.settings.githubPagesUrl
+        });
+
+        const gitResult = await gitService.commitAndPush(
+          absolutePath,
+          `Add slide: ${result.title}`
+        );
+
+        if (gitResult.success && gitResult.url) {
+          githubPagesUrl = gitResult.url;
+          console.log('Slide pushed to GitHub Pages:', githubPagesUrl);
+        } else {
+          console.warn('Git push warning:', gitResult.message);
+          new Notice(`Git: ${gitResult.message}`);
+        }
+      }
+
       // Embed in note
       progressModal?.updateProgress({
         step: 'embedding',
@@ -687,7 +720,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: '노트에 삽입 중...'
       });
 
-      await this.fileService.embedSlideInNote(noteFile, slidePath);
+      await this.fileService.embedSlideInNote(noteFile, slidePath, githubPagesUrl);
 
       progressModal?.updateProgress({
         step: 'complete',
@@ -695,7 +728,11 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: '슬라이드 생성 완료!'
       });
 
-      new Notice('인터랙티브 슬라이드가 생성되었습니다!');
+      if (githubPagesUrl) {
+        new Notice(`슬라이드가 생성되었습니다!\n${githubPagesUrl}`);
+      } else {
+        new Notice('인터랙티브 슬라이드가 생성되었습니다!');
+      }
 
     } catch (error) {
       console.error('Slide generation error:', error);

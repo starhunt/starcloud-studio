@@ -168,17 +168,21 @@ export class FileService {
   }
 
   /**
-   * Embed slide in note using iframe
+   * Embed slide in note using iframe with GitHub Pages URL
    */
-  async embedSlideInNote(noteFile: TFile, slidePath: string): Promise<void> {
+  async embedSlideInNote(noteFile: TFile, slidePath: string, githubPagesUrl?: string): Promise<void> {
     try {
       const content = await this.app.vault.read(noteFile);
 
-      // Create iframe embed syntax
-      // Use app://local/ protocol for Obsidian to load local files
-      const vaultPath = (this.app.vault.adapter as any).basePath || '';
-      const fullPath = `${vaultPath}/${slidePath}`.replace(/\\/g, '/');
-      const embedSyntax = `<iframe src="app://local/${encodeURI(fullPath)}" width="100%" height="800px" style="border: 1px solid var(--background-modifier-border); border-radius: 8px;"></iframe>\n\n`;
+      let embedSyntax: string;
+
+      if (githubPagesUrl) {
+        // Use GitHub Pages URL for iframe
+        embedSyntax = `<iframe src="${githubPagesUrl}" width="100%" height="800px" style="border: 1px solid var(--background-modifier-border); border-radius: 8px;"></iframe>\n\n`;
+      } else {
+        // Fallback: Create a link to open the file
+        embedSyntax = `> [!info] Slide Generated\n> [[${slidePath}|Open Slide in Browser]]\n\n`;
+      }
 
       // Check if note has frontmatter
       const frontmatterMatch = content.match(/^---\n[\s\S]*?\n---\n/);
@@ -191,7 +195,7 @@ export class FileService {
         const restContent = content.slice(frontmatter.length);
 
         // Check for existing slide embed (replace it)
-        const existingEmbed = restContent.match(/^<iframe src="[^"]*\.html"[^>]*><\/iframe>\n\n/);
+        const existingEmbed = restContent.match(/^(<iframe src="[^"]*"[^>]*><\/iframe>|> \[!info\] Slide Generated[\s\S]*?)\n\n/);
 
         if (existingEmbed) {
           newContent = frontmatter + embedSyntax + restContent.slice(existingEmbed[0].length);
@@ -199,7 +203,7 @@ export class FileService {
           newContent = frontmatter + embedSyntax + restContent;
         }
       } else {
-        const existingEmbed = content.match(/^<iframe src="[^"]*\.html"[^>]*><\/iframe>\n\n/);
+        const existingEmbed = content.match(/^(<iframe src="[^"]*"[^>]*><\/iframe>|> \[!info\] Slide Generated[\s\S]*?)\n\n/);
 
         if (existingEmbed) {
           newContent = embedSyntax + content.slice(existingEmbed[0].length);
@@ -212,6 +216,14 @@ export class FileService {
     } catch (error) {
       throw this.createError('SAVE_ERROR', `Failed to embed slide: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  /**
+   * Get the absolute path to a file in the vault
+   */
+  getAbsolutePath(relativePath: string): string {
+    const vaultPath = (this.app.vault.adapter as any).basePath || '';
+    return `${vaultPath}/${relativePath}`.replace(/\\/g, '/');
   }
 
   /**

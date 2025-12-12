@@ -49,7 +49,15 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   slidesRootPath: '999-Slides',
   defaultSlidePromptType: 'notebooklm-summary',
   customSlidePrompts: [],
-  showSlidePreviewBeforeGeneration: true
+  showSlidePreviewBeforeGeneration: true,
+
+  // Git Integration for Slides
+  gitEnabled: false,
+  gitRepoPath: '',
+  gitBranch: 'main',
+  githubToken: '',
+  githubPagesUrl: '',
+  autoCommitPush: false
 };
 
 // System prompt for generating image prompts

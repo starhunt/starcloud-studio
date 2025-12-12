@@ -261,6 +261,14 @@ export interface NanoBananaCloudSettings {
   defaultSlidePromptType: SlidePromptType;
   customSlidePrompts: SlidePromptConfig[];
   showSlidePreviewBeforeGeneration: boolean;
+
+  // Git Integration for Slides
+  gitEnabled: boolean;
+  gitRepoPath: string;
+  gitBranch: string;
+  githubToken: string;
+  githubPagesUrl: string;
+  autoCommitPush: boolean;
 }
 
 // ============================================================

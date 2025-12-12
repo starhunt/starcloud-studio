@@ -27,6 +27,7 @@ export class ProgressModal extends Modal {
     { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
     { step: 'generating-slide', label: 'HTML 슬라이드 생성 중...', icon: '🎴' },
     { step: 'saving', label: '슬라이드 저장 중...', icon: '💾' },
+    { step: 'uploading', label: 'GitHub에 업로드 중...', icon: '☁️' },
     { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
     { step: 'complete', label: '완료!', icon: '✅' }
   ];
