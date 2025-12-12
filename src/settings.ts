@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, Modal, PluginSettingTab, Setting, Notice } from 'obsidian';
 import type NanoBananaCloudPlugin from './main';
 import {
   AIProvider,
@@ -14,8 +14,10 @@ import {
   LANGUAGE_NAMES,
   InputSource,
   EmbedSize,
-  EMBED_SIZES
+  EMBED_SIZES,
+  SlidePromptType
 } from './types';
+import { BUILTIN_SLIDE_PROMPTS } from './settingsData';
 
 export class NanoBananaCloudSettingTab extends PluginSettingTab {
   plugin: NanoBananaCloudPlugin;
@@ -49,6 +51,9 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
 
     // UX Section
     this.createUXSection(containerEl);
+
+    // Slide Generation Section
+    this.createSlideGenerationSection(containerEl);
   }
 
   private createDriveConnectionSection(containerEl: HTMLElement) {
@@ -481,5 +486,123 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         })
       );
+  }
+
+  private createSlideGenerationSection(containerEl: HTMLElement) {
+    new Setting(containerEl)
+      .setName('Slide Generation Settings')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName('Slides Root Folder')
+      .setDesc('Root folder path for generated HTML slides (e.g., 999-Slides)')
+      .addText(text => text
+        .setPlaceholder('999-Slides')
+        .setValue(this.plugin.settings.slidesRootPath || '999-Slides')
+        .onChange(async (value) => {
+          this.plugin.settings.slidesRootPath = value || '999-Slides';
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Default Slide Prompt Type
+    new Setting(containerEl)
+      .setName('Default System Prompt')
+      .setDesc('Default system prompt for slide generation')
+      .addDropdown(dropdown => {
+        // Add built-in prompts
+        for (const [key, config] of Object.entries(BUILTIN_SLIDE_PROMPTS)) {
+          if (key !== 'custom') {
+            dropdown.addOption(key, config.name);
+          }
+        }
+        // Add custom prompts
+        for (const custom of this.plugin.settings.customSlidePrompts || []) {
+          dropdown.addOption(custom.id, `${custom.name} (Custom)`);
+        }
+        dropdown.setValue(this.plugin.settings.defaultSlidePromptType || 'notebooklm-summary');
+        dropdown.onChange(async (value: SlidePromptType) => {
+          this.plugin.settings.defaultSlidePromptType = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    // Show slide preview before generation
+    new Setting(containerEl)
+      .setName('Show Slide Options')
+      .setDesc('Show options modal before generating slide')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showSlidePreviewBeforeGeneration ?? true)
+        .onChange(async (value) => {
+          this.plugin.settings.showSlidePreviewBeforeGeneration = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // View/Edit System Prompt
+    new Setting(containerEl)
+      .setName('View System Prompt')
+      .setDesc('View and copy the current system prompt for slide generation')
+      .addButton(button => button
+        .setButtonText('View Prompt')
+        .onClick(() => {
+          const promptType = this.plugin.settings.defaultSlidePromptType || 'notebooklm-summary';
+          let promptConfig = BUILTIN_SLIDE_PROMPTS[promptType as SlidePromptType];
+
+          // Check custom prompts if not found
+          if (!promptConfig) {
+            promptConfig = this.plugin.settings.customSlidePrompts?.find(p => p.id === promptType) || BUILTIN_SLIDE_PROMPTS['notebooklm-summary'];
+          }
+
+          // Create a simple modal to show the prompt
+          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
+          modal.open();
+        })
+      );
+  }
+}
+
+// Simple modal to view system prompt
+class SystemPromptViewModal extends Modal {
+  private title: string;
+  private prompt: string;
+
+  constructor(app: App, title: string, prompt: string) {
+    super(app);
+    this.title = title;
+    this.prompt = prompt;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass('nanobanana-prompt-view-modal');
+
+    contentEl.createEl('h2', { text: `System Prompt: ${this.title}` });
+
+    const textArea = contentEl.createEl('textarea', {
+      cls: 'nanobanana-prompt-textarea',
+      attr: { readonly: 'true', rows: '20' }
+    });
+    textArea.value = this.prompt;
+
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+
+    const copyBtn = buttonContainer.createEl('button', {
+      text: 'Copy to Clipboard',
+      cls: 'mod-cta'
+    });
+    copyBtn.onclick = async () => {
+      await navigator.clipboard.writeText(this.prompt);
+      new Notice('Prompt copied to clipboard');
+    };
+
+    const closeBtn = buttonContainer.createEl('button', { text: 'Close' });
+    closeBtn.onclick = () => this.close();
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }

@@ -20,7 +20,7 @@ import { DriveUploadService } from './services/driveUploadService';
 import { EmbedService } from './services/embedService';
 import { QuickOptionsModal } from './modals/quickOptionsModal';
 import { PreviewModal } from './modals/previewModal';
-import { ProgressModal } from './modals/progressModal';
+import { ProgressModal, ProgressMode } from './modals/progressModal';
 import { SlideOptionsModal } from './modals/slideOptionsModal';
 
 export default class NanoBananaCloudPlugin extends Plugin {
@@ -627,7 +627,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        });
+        }, 'slide');
         progressModal.open();
       }
 
@@ -635,7 +635,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'analyzing',
         progress: 5,
-        message: 'Analyzing content...'
+        message: '콘텐츠 분석 중...'
       });
 
       let content: string;
@@ -653,8 +653,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-slide',
         progress: 20,
-        message: 'Generating HTML slide...',
-        details: `Using ${this.settings.selectedProvider}`
+        message: 'HTML 슬라이드 생성 중...',
+        details: `${this.settings.selectedProvider} 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
       });
 
       const systemPrompt = options.selectedPromptConfig.prompt;
@@ -670,7 +670,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'saving',
         progress: 80,
-        message: 'Saving slide...'
+        message: '슬라이드 저장 중...'
       });
 
       const slidePath = await this.fileService.saveSlide(
@@ -684,7 +684,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'embedding',
         progress: 95,
-        message: 'Embedding in note...'
+        message: '노트에 삽입 중...'
       });
 
       await this.fileService.embedSlideInNote(noteFile, slidePath);
@@ -692,10 +692,10 @@ export default class NanoBananaCloudPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'complete',
         progress: 100,
-        message: 'Slide generated successfully!'
+        message: '슬라이드 생성 완료!'
       });
 
-      new Notice('Interactive slide created successfully!');
+      new Notice('인터랙티브 슬라이드가 생성되었습니다!');
 
     } catch (error) {
       console.error('Slide generation error:', error);

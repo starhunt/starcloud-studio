@@ -9,6 +9,9 @@ export class SlideOptionsModal extends Modal {
   private customSlidePrompts: SlidePromptConfig[];
   private onSubmit: (result: SlideOptionsResult) => void;
   private customTextContainer: HTMLElement | null = null;
+  private promptPreviewContainer: HTMLElement | null = null;
+  private editedPrompt: string = '';
+  private isPromptEdited: boolean = false;
   private language: PreferredLanguage;
 
   constructor(
@@ -82,9 +85,15 @@ export class SlideOptionsModal extends Modal {
           .setValue(this.selectedPromptType)
           .onChange((value: SlidePromptType | string) => {
             this.selectedPromptType = value;
+            this.isPromptEdited = false;
+            this.updatePromptPreview();
           });
         return dropdown;
       });
+
+    // System Prompt Preview/Edit Section
+    this.promptPreviewContainer = contentEl.createDiv({ cls: 'nanobanana-prompt-preview-container' });
+    this.updatePromptPreview();
 
     // Buttons container
     const buttonContainer = contentEl.createDiv({ cls: 'nanobanana-button-container' });
@@ -150,7 +159,61 @@ export class SlideOptionsModal extends Modal {
     }
   }
 
-  private getSelectedPromptConfig(): SlidePromptConfig {
+  private updatePromptPreview() {
+    if (!this.promptPreviewContainer) return;
+    this.promptPreviewContainer.empty();
+
+    const currentConfig = this.getBasePromptConfig();
+
+    // Collapsible header
+    const header = this.promptPreviewContainer.createDiv({ cls: 'nanobanana-prompt-header' });
+    const toggleBtn = header.createEl('button', {
+      text: this.getMessage('viewSystemPrompt'),
+      cls: 'nanobanana-btn nanobanana-btn-small'
+    });
+
+    const contentDiv = this.promptPreviewContainer.createDiv({
+      cls: 'nanobanana-prompt-content nanobanana-hidden'
+    });
+
+    // Prompt description
+    contentDiv.createEl('p', {
+      text: currentConfig.description,
+      cls: 'nanobanana-prompt-desc'
+    });
+
+    // Editable textarea
+    const textarea = contentDiv.createEl('textarea', {
+      cls: 'nanobanana-prompt-textarea'
+    });
+    textarea.value = this.isPromptEdited ? this.editedPrompt : currentConfig.prompt;
+    textarea.rows = 12;
+    textarea.addEventListener('input', () => {
+      this.editedPrompt = textarea.value;
+      this.isPromptEdited = true;
+    });
+
+    // Reset button
+    const resetBtn = contentDiv.createEl('button', {
+      text: this.getMessage('resetPrompt'),
+      cls: 'nanobanana-btn nanobanana-btn-small nanobanana-btn-reset'
+    });
+    resetBtn.onclick = () => {
+      this.isPromptEdited = false;
+      this.editedPrompt = '';
+      textarea.value = currentConfig.prompt;
+    };
+
+    // Toggle visibility
+    toggleBtn.onclick = () => {
+      contentDiv.toggleClass('nanobanana-hidden', !contentDiv.hasClass('nanobanana-hidden'));
+      toggleBtn.setText(contentDiv.hasClass('nanobanana-hidden')
+        ? this.getMessage('viewSystemPrompt')
+        : this.getMessage('hideSystemPrompt'));
+    };
+  }
+
+  private getBasePromptConfig(): SlidePromptConfig {
     // First check built-in prompts
     if (this.selectedPromptType in BUILTIN_SLIDE_PROMPTS) {
       return BUILTIN_SLIDE_PROMPTS[this.selectedPromptType as SlidePromptType];
@@ -160,6 +223,20 @@ export class SlideOptionsModal extends Modal {
     if (custom) return custom;
     // Fallback
     return BUILTIN_SLIDE_PROMPTS['notebooklm-summary'];
+  }
+
+  private getSelectedPromptConfig(): SlidePromptConfig {
+    const baseConfig = this.getBasePromptConfig();
+
+    // If prompt was edited, return modified config
+    if (this.isPromptEdited && this.editedPrompt) {
+      return {
+        ...baseConfig,
+        prompt: this.editedPrompt
+      };
+    }
+
+    return baseConfig;
   }
 
   private getMessage(key: string): string {
@@ -175,6 +252,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: '슬라이드로 변환할 텍스트를 입력하세요...',
         promptTypeLabel: '시스템 프롬프트',
         promptTypeDesc: '슬라이드 생성에 사용할 지침을 선택하세요',
+        viewSystemPrompt: '시스템 프롬프트 보기/편집',
+        hideSystemPrompt: '시스템 프롬프트 숨기기',
+        resetPrompt: '기본값으로 초기화',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -189,6 +269,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: 'Enter text to convert to slide...',
         promptTypeLabel: 'System prompt',
         promptTypeDesc: 'Select the instruction type for slide generation',
+        viewSystemPrompt: 'View/Edit System Prompt',
+        hideSystemPrompt: 'Hide System Prompt',
+        resetPrompt: 'Reset to Default',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -203,6 +286,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: 'スライドに変換するテキストを入力...',
         promptTypeLabel: 'システムプロンプト',
         promptTypeDesc: 'スライド生成に使用する指示を選択',
+        viewSystemPrompt: 'システムプロンプトを表示/編集',
+        hideSystemPrompt: 'システムプロンプトを隠す',
+        resetPrompt: 'デフォルトにリセット',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -217,6 +303,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: '输入要转换为幻灯片的文本...',
         promptTypeLabel: '系统提示',
         promptTypeDesc: '选择幻灯片生成使用的指令',
+        viewSystemPrompt: '查看/编辑系统提示',
+        hideSystemPrompt: '隐藏系统提示',
+        resetPrompt: '重置为默认',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -231,6 +320,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: 'Ingrese el texto...',
         promptTypeLabel: 'Prompt del sistema',
         promptTypeDesc: 'Seleccione el tipo de instruccion',
+        viewSystemPrompt: 'Ver/Editar prompt',
+        hideSystemPrompt: 'Ocultar prompt',
+        resetPrompt: 'Restablecer',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -245,6 +337,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: 'Entrez le texte...',
         promptTypeLabel: 'Prompt systeme',
         promptTypeDesc: 'Selectionnez le type instruction',
+        viewSystemPrompt: 'Voir/Modifier prompt',
+        hideSystemPrompt: 'Masquer prompt',
+        resetPrompt: 'Reinitialiser',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       },
@@ -259,6 +354,9 @@ export class SlideOptionsModal extends Modal {
         customTextPlaceholder: 'Text eingeben...',
         promptTypeLabel: 'System-Prompt',
         promptTypeDesc: 'Wahlen Sie den Anweisungstyp',
+        viewSystemPrompt: 'Prompt anzeigen/bearbeiten',
+        hideSystemPrompt: 'Prompt ausblenden',
+        resetPrompt: 'Zurucksetzen',
         cancel: 'Cancel',
         generateSlide: 'Generate slide'
       }

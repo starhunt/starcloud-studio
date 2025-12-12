@@ -1,6 +1,8 @@
 import { App, Modal } from 'obsidian';
 import { ProgressState, ProgressStep } from '../types';
 
+export type ProgressMode = 'image' | 'slide';
+
 export class ProgressModal extends Modal {
   private state: ProgressState;
   private progressBarEl: HTMLElement | null = null;
@@ -9,8 +11,9 @@ export class ProgressModal extends Modal {
   private stepListEl: HTMLElement | null = null;
   private currentStepIndex: number = 0;
   private onCancel?: () => void;
+  private mode: ProgressMode;
 
-  private readonly steps: { step: ProgressStep; label: string; icon: string }[] = [
+  private readonly imageSteps: { step: ProgressStep; label: string; icon: string }[] = [
     { step: 'analyzing', label: '노트 분석 중...', icon: '📋' },
     { step: 'generating-prompt', label: '프롬프트 생성 중...', icon: '✍️' },
     { step: 'preview', label: '프롬프트 확인', icon: '👁️' },
@@ -20,9 +23,22 @@ export class ProgressModal extends Modal {
     { step: 'complete', label: '완료!', icon: '✅' }
   ];
 
-  constructor(app: App, onCancel?: () => void) {
+  private readonly slideSteps: { step: ProgressStep; label: string; icon: string }[] = [
+    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
+    { step: 'generating-slide', label: 'HTML 슬라이드 생성 중...', icon: '🎴' },
+    { step: 'saving', label: '슬라이드 저장 중...', icon: '💾' },
+    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
+    { step: 'complete', label: '완료!', icon: '✅' }
+  ];
+
+  private get steps() {
+    return this.mode === 'slide' ? this.slideSteps : this.imageSteps;
+  }
+
+  constructor(app: App, onCancel?: () => void, mode: ProgressMode = 'image') {
     super(app);
     this.onCancel = onCancel;
+    this.mode = mode;
     this.state = {
       step: 'analyzing',
       progress: 0,
@@ -35,7 +51,8 @@ export class ProgressModal extends Modal {
     contentEl.empty();
     contentEl.addClass('nanobanana-progress-modal');
 
-    contentEl.createEl('h2', { text: '🎨 포스터 생성 중' });
+    const title = this.mode === 'slide' ? '🎴 슬라이드 생성 중' : '🎨 포스터 생성 중';
+    contentEl.createEl('h2', { text: title });
 
     // Step list
     this.stepListEl = contentEl.createDiv({ cls: 'step-list' });

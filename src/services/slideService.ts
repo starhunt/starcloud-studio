@@ -88,7 +88,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
-        max_tokens: 16000,
+        max_tokens: 64000,
         temperature: 0.7
       })
     });
@@ -163,7 +163,7 @@ export class SlideService {
       },
       body: JSON.stringify({
         model: model,
-        max_tokens: 16000,
+        max_tokens: 64000,
         system: systemPrompt,
         messages: [
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
@@ -193,6 +193,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
+        max_tokens: 64000,
         temperature: 0.7
       })
     });
@@ -219,6 +220,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
+        max_tokens: 64000,
         temperature: 0.7
       })
     });
