@@ -1,4 +1,4 @@
-import { NanoBananaCloudSettings } from './types';
+import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig } from './types';
 
 export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   // AI API Keys
@@ -43,7 +43,13 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   showPreviewBeforeGeneration: true,
   showProgressModal: true,
   autoRetryCount: 2,
-  customPromptPrefix: ''
+  customPromptPrefix: '',
+
+  // Slide Generation
+  slidesRootPath: '999-Slides',
+  defaultSlidePromptType: 'notebooklm-summary',
+  customSlidePrompts: [],
+  showSlidePreviewBeforeGeneration: true
 };
 
 // System prompt for generating image prompts
@@ -72,3 +78,38 @@ Design Requirements:
 
 Content to visualize:
 {prompt}`;
+
+// Slide Generation Prompts
+export const BUILTIN_SLIDE_PROMPTS: Record<SlidePromptType, SlidePromptConfig> = {
+  'notebooklm-summary': {
+    id: 'notebooklm-summary',
+    name: 'NotebookLM Summary',
+    description: 'Generate scroll-based interactive HTML infographic slides',
+    prompt: `당신은 복잡한 기술 문서를 시각적으로 매력적이고 이해하기 쉬운 스크롤형 인터랙티브 인포그래픽 슬라이드로 변환하는 전문가입니다.
+
+주어진 콘텐츠를 분석하여 최소 15페이지 이상의 고품질 스크롤형 인터랙티브 인포그래픽 슬라이드를 생성하세요.
+
+구조:
+1. 타이틀 섹션 (1페이지)
+2. 개요 섹션 (1페이지)
+3. 핵심 개념 소개 (2-3페이지)
+4. 주요 내용 전개 (4-5페이지)
+5. 심층분석 파트 (4-8페이지)
+6. 종합 정리 및 시사점 (1페이지)
+
+기술적 요구사항:
+- 단일 HTML 파일로 출력
+- Chart.js 사용 가능
+- Intersection Observer를 활용한 스크롤 애니메이션
+- 다크/라이트 모드 지원
+- 반응형 디자인`,
+    isBuiltIn: true
+  },
+  'custom': {
+    id: 'custom',
+    name: 'Custom prompt',
+    description: 'Use your own custom prompt',
+    prompt: '',
+    isBuiltIn: true
+  }
+};

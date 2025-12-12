@@ -3,21 +3,25 @@ import {
   NanoBananaCloudSettings,
   QuickOptionsResult,
   PreviewModalResult,
+  SlideOptionsResult,
   OAuthTokens,
   InputSource,
   EmbedPosition,
   GenerationErrorClass
 } from './types';
-import { DEFAULT_SETTINGS } from './settingsData';
+import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
 import { NanoBananaCloudSettingTab } from './settings';
 import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
+import { SlideService } from './services/slideService';
+import { FileService } from './services/fileService';
 import { GoogleOAuthFlow } from './services/googleOAuthFlow';
 import { DriveUploadService } from './services/driveUploadService';
 import { EmbedService } from './services/embedService';
 import { QuickOptionsModal } from './modals/quickOptionsModal';
 import { PreviewModal } from './modals/previewModal';
 import { ProgressModal } from './modals/progressModal';
+import { SlideOptionsModal } from './modals/slideOptionsModal';
 
 export default class NanoBananaCloudPlugin extends Plugin {
   settings: NanoBananaCloudSettings;
@@ -25,6 +29,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
   // Services
   private promptService: PromptService;
   private imageService: ImageService;
+  private slideService: SlideService;
+  private fileService: FileService;
   private driveUploadService: DriveUploadService | null = null;
   private embedService: EmbedService;
 
@@ -37,6 +43,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
     // Initialize services
     this.promptService = new PromptService();
     this.imageService = new ImageService();
+    this.slideService = new SlideService();
+    this.fileService = new FileService(this.app);
     this.embedService = new EmbedService(this.app);
 
     // Initialize Drive service if credentials exist
@@ -69,6 +77,14 @@ export default class NanoBananaCloudPlugin extends Plugin {
       name: 'Connect to Google Drive',
       callback: () => {
         void this.startOAuthFlow();
+      }
+    });
+
+    this.addCommand({
+      id: 'generate-slide',
+      name: 'Generate interactive slide',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        void this.generateSlide(editor, view);
       }
     });
 
@@ -574,5 +590,137 @@ export default class NanoBananaCloudPlugin extends Plugin {
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Generate interactive HTML slide
+   */
+  private async generateSlide(editor: Editor, view: MarkdownView) {
+    if (this.isGenerating) {
+      new Notice('Generation already in progress');
+      return;
+    }
+
+    const noteFile = view.file;
+    if (!noteFile) {
+      new Notice('No active note');
+      return;
+    }
+
+    // Check API key
+    const apiKey = this.getApiKeyForProvider();
+    if (!apiKey) {
+      new Notice(`Please configure ${this.settings.selectedProvider} API key in settings`);
+      return;
+    }
+
+    // Show slide options modal
+    const options = await this.showSlideOptionsModal();
+    if (!options.confirmed) {
+      return;
+    }
+
+    this.isGenerating = true;
+    let progressModal: ProgressModal | null = null;
+
+    try {
+      if (this.settings.showProgressModal) {
+        progressModal = new ProgressModal(this.app, () => {
+          this.isGenerating = false;
+        });
+        progressModal.open();
+      }
+
+      // Get content
+      progressModal?.updateProgress({
+        step: 'analyzing',
+        progress: 5,
+        message: 'Analyzing content...'
+      });
+
+      let content: string;
+      if (options.inputSource === 'custom-text') {
+        content = options.customText;
+      } else {
+        content = await this.app.vault.read(noteFile);
+      }
+
+      if (!content.trim()) {
+        throw new GenerationErrorClass('NO_CONTENT', 'No content to generate from');
+      }
+
+      // Generate slide
+      progressModal?.updateProgress({
+        step: 'generating-slide',
+        progress: 20,
+        message: 'Generating HTML slide...',
+        details: `Using ${this.settings.selectedProvider}`
+      });
+
+      const systemPrompt = options.selectedPromptConfig.prompt;
+      const result = await this.slideService.generateSlide(
+        content,
+        this.settings.selectedProvider,
+        this.settings.promptModel,
+        apiKey,
+        systemPrompt
+      );
+
+      // Save slide
+      progressModal?.updateProgress({
+        step: 'saving',
+        progress: 80,
+        message: 'Saving slide...'
+      });
+
+      const slidePath = await this.fileService.saveSlide(
+        result.htmlContent,
+        noteFile,
+        this.settings.slidesRootPath || '999-Slides',
+        result.title
+      );
+
+      // Embed in note
+      progressModal?.updateProgress({
+        step: 'embedding',
+        progress: 95,
+        message: 'Embedding in note...'
+      });
+
+      await this.fileService.embedSlideInNote(noteFile, slidePath);
+
+      progressModal?.updateProgress({
+        step: 'complete',
+        progress: 100,
+        message: 'Slide generated successfully!'
+      });
+
+      new Notice('Interactive slide created successfully!');
+
+    } catch (error) {
+      console.error('Slide generation error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (progressModal) {
+        progressModal.showError(message);
+      } else {
+        new Notice(`Generation failed: ${message}`);
+      }
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+
+  private showSlideOptionsModal(): Promise<SlideOptionsResult> {
+    return new Promise((resolve) => {
+      const modal = new SlideOptionsModal(
+        this.app,
+        this.settings.defaultSlidePromptType || 'notebooklm-summary',
+        this.settings.customSlidePrompts || [],
+        (result) => resolve(result),
+        this.settings.preferredLanguage
+      );
+      modal.open();
+    });
   }
 }
