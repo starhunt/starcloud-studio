@@ -34,30 +34,54 @@ export class GitService {
         return { success: false, message: 'Git repository path not configured' };
       }
 
+      console.log('[GitService] Starting commit and push...');
+      console.log('[GitService] File path:', filePath);
+      console.log('[GitService] Repo path:', repoPath);
+      console.log('[GitService] Branch:', branch);
+
       // Get relative path from repo root
       const relativePath = this.getRelativePath(filePath, repoPath);
+      console.log('[GitService] Relative path:', relativePath);
 
       // Stage the file
+      console.log('[GitService] Staging file...');
       await this.execGit(`add "${relativePath}"`, repoPath);
 
       // Check if there are changes to commit
       const status = await this.execGit('status --porcelain', repoPath);
+      console.log('[GitService] Status:', status.stdout);
+
       if (!status.stdout.trim()) {
-        return { success: true, message: 'No changes to commit' };
+        return { success: true, message: 'No changes to commit', url: this.generatePagesUrl(relativePath) };
       }
 
       // Commit
+      console.log('[GitService] Committing...');
       await this.execGit(`commit -m "${commitMessage}"`, repoPath);
 
       // Push with token authentication
-      if (token) {
-        await this.pushWithToken(repoPath, branch, token);
-      } else {
-        await this.execGit(`push origin ${branch}`, repoPath);
+      console.log('[GitService] Pushing to origin/' + branch + '...');
+      try {
+        if (token) {
+          await this.pushWithToken(repoPath, branch, token);
+        } else {
+          await this.execGit(`push origin ${branch}`, repoPath);
+        }
+        console.log('[GitService] Push successful');
+      } catch (pushError) {
+        const pushErrorMsg = pushError instanceof Error ? pushError.message : String(pushError);
+        console.error('[GitService] Push failed:', pushErrorMsg);
+        // Return partial success - commit worked but push failed
+        return {
+          success: false,
+          message: `Committed but push failed: ${pushErrorMsg}. Try: git push origin ${branch}`,
+          url: this.generatePagesUrl(relativePath)
+        };
       }
 
       // Generate GitHub Pages URL
       const pagesUrl = this.generatePagesUrl(relativePath);
+      console.log('[GitService] Generated URL:', pagesUrl);
 
       return {
         success: true,
@@ -66,7 +90,7 @@ export class GitService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Git operation failed:', errorMessage);
+      console.error('[GitService] Git operation failed:', errorMessage);
       return {
         success: false,
         message: `Git operation failed: ${errorMessage}`

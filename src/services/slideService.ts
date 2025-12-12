@@ -285,32 +285,43 @@ export class SlideService {
 
   /**
    * Generate a title from content (first line or first N words)
+   * Returns English-only title, max 20 characters
    */
   private generateTitle(content: string): string {
     const firstLine = content.split('\n')[0].trim();
     // Remove markdown headers
     const cleaned = firstLine.replace(/^#+\s*/, '');
-    // Limit to 50 characters
-    return this.sanitizeTitleForFilename(cleaned.substring(0, 50).trim()) || 'untitled-slide';
+    return this.sanitizeTitleForFilename(cleaned) || 'untitled-slide';
   }
 
   /**
    * Clean and sanitize title for use in filenames
+   * Returns English-only title, max 20 characters
    */
   private cleanTitle(title: string): string {
-    return this.sanitizeTitleForFilename(title.trim().substring(0, 50)) || 'untitled-slide';
+    return this.sanitizeTitleForFilename(title.trim()) || 'untitled-slide';
   }
 
   /**
    * Sanitize title for use in filename
+   * English-only, max 20 characters
    */
   private sanitizeTitleForFilename(title: string): string {
-    return title
+    // Extract only English letters, numbers, and spaces
+    const englishOnly = title
+      .replace(/[^a-zA-Z0-9\s-]/g, '') // Keep only English alphanumeric, spaces, hyphens
+      .trim();
+
+    // If no English characters found, generate a generic name
+    if (!englishOnly) {
+      return 'slide-' + Date.now().toString(36).substring(0, 8);
+    }
+
+    return englishOnly
       .toLowerCase()
-      .replace(/[^\w\s가-힣\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf-]/g, '')  // Keep alphanumeric, Korean, Japanese, Chinese
       .replace(/\s+/g, '-')  // Replace spaces with hyphens
       .replace(/-+/g, '-')   // Remove consecutive hyphens
-      .substring(0, 50)      // Limit length
+      .substring(0, 20)      // Limit to 20 characters
       .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
       || 'untitled';
   }

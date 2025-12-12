@@ -241,14 +241,24 @@ export class FileService {
 
   /**
    * Sanitize title for use in filename
+   * English-only, max 20 characters
    */
   private sanitizeTitleForFilename(title: string): string {
-    return title
+    // Extract only English letters, numbers, and spaces
+    const englishOnly = title
+      .replace(/[^a-zA-Z0-9\s-]/g, '')
+      .trim();
+
+    // If no English characters found, generate a generic name
+    if (!englishOnly) {
+      return 'slide-' + Date.now().toString(36).substring(0, 8);
+    }
+
+    return englishOnly
       .toLowerCase()
-      .replace(/[^\w\s가-힣\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .substring(0, 50)
+      .substring(0, 20)
       .replace(/^-|-$/g, '')
       || 'untitled';
   }

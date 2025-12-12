@@ -182,12 +182,27 @@ export class SlideOptionsModal extends Modal {
       cls: 'nanobanana-prompt-desc'
     });
 
-    // Editable textarea
+    // Editable textarea with proper styling
     const textarea = contentDiv.createEl('textarea', {
       cls: 'nanobanana-prompt-textarea'
     });
     textarea.value = this.isPromptEdited ? this.editedPrompt : currentConfig.prompt;
-    textarea.rows = 12;
+    textarea.style.cssText = `
+      width: 100%;
+      min-height: 300px;
+      max-height: 50vh;
+      font-family: var(--font-monospace);
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 10px;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      background: var(--background-primary);
+      color: var(--text-normal);
+      resize: vertical;
+      overflow: auto;
+      margin: 10px 0;
+    `;
     textarea.addEventListener('input', () => {
       this.editedPrompt = textarea.value;
       this.isPromptEdited = true;

@@ -685,13 +685,41 @@ class SystemPromptViewModal extends Modal {
     contentEl.empty();
     contentEl.addClass('nanobanana-prompt-view-modal');
 
+    // Add styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .nanobanana-prompt-view-modal {
+        width: 700px;
+        max-width: 90vw;
+      }
+      .nanobanana-prompt-view-modal .prompt-textarea-container {
+        width: 100%;
+        margin: 16px 0;
+      }
+      .nanobanana-prompt-view-modal textarea {
+        width: 100%;
+        min-height: 400px;
+        max-height: 60vh;
+        font-family: var(--font-monospace);
+        font-size: 12px;
+        line-height: 1.5;
+        padding: 12px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 4px;
+        background: var(--background-primary);
+        color: var(--text-normal);
+        resize: vertical;
+        overflow: auto;
+      }
+    `;
+    contentEl.appendChild(style);
+
     contentEl.createEl('h2', { text: `System Prompt: ${this.title}` });
 
-    const textArea = contentEl.createEl('textarea', {
-      cls: 'nanobanana-prompt-textarea',
-      attr: { readonly: 'true', rows: '20' }
-    });
+    const textAreaContainer = contentEl.createDiv({ cls: 'prompt-textarea-container' });
+    const textArea = textAreaContainer.createEl('textarea');
     textArea.value = this.prompt;
+    textArea.readOnly = true;
 
     const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
 
