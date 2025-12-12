@@ -1,4 +1,4 @@
-import { App, TFile, TFolder, normalizePath } from 'obsidian';
+import { App, TFile, TFolder, normalizePath, Editor } from 'obsidian';
 import { GenerationError, GenerationErrorClass } from '../types';
 
 export class FileService {
@@ -168,51 +168,53 @@ export class FileService {
   }
 
   /**
-   * Embed slide in note using iframe with GitHub Pages URL
+   * Embed slide in note at cursor position using iframe with GitHub Pages URL
    */
-  async embedSlideInNote(noteFile: TFile, slidePath: string, githubPagesUrl?: string): Promise<void> {
+  async embedSlideInNote(
+    noteFile: TFile,
+    slidePath: string,
+    githubPagesUrl?: string,
+    editor?: Editor
+  ): Promise<void> {
     try {
-      const content = await this.app.vault.read(noteFile);
-
       let embedSyntax: string;
 
       if (githubPagesUrl) {
-        // Use GitHub Pages URL for iframe
-        embedSyntax = `<iframe src="${githubPagesUrl}" width="100%" height="800px" style="border: 1px solid var(--background-modifier-border); border-radius: 8px;"></iframe>\n\n`;
+        // Use div-wrapped iframe for GitHub Pages URL
+        embedSyntax = `<div style="width: 100%; margin: 0 auto;">
+<iframe
+    src="${githubPagesUrl}"
+    width="100%"
+    height="600px"
+    frameborder="0"
+    style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+</iframe>
+</div>\n\n`;
       } else {
         // Fallback: Create a link to open the file
         embedSyntax = `> [!info] Slide Generated\n> [[${slidePath}|Open Slide in Browser]]\n\n`;
       }
 
-      // Check if note has frontmatter
-      const frontmatterMatch = content.match(/^---\n[\s\S]*?\n---\n/);
-
-      let newContent: string;
-
-      if (frontmatterMatch) {
-        // Insert after frontmatter
-        const frontmatter = frontmatterMatch[0];
-        const restContent = content.slice(frontmatter.length);
-
-        // Check for existing slide embed (replace it)
-        const existingEmbed = restContent.match(/^(<iframe src="[^"]*"[^>]*><\/iframe>|> \[!info\] Slide Generated[\s\S]*?)\n\n/);
-
-        if (existingEmbed) {
-          newContent = frontmatter + embedSyntax + restContent.slice(existingEmbed[0].length);
-        } else {
-          newContent = frontmatter + embedSyntax + restContent;
-        }
+      if (editor) {
+        // Insert at cursor position
+        const cursor = editor.getCursor();
+        editor.replaceRange(embedSyntax, cursor);
       } else {
-        const existingEmbed = content.match(/^(<iframe src="[^"]*"[^>]*><\/iframe>|> \[!info\] Slide Generated[\s\S]*?)\n\n/);
+        // Fallback: Insert at beginning of note (after frontmatter if exists)
+        const content = await this.app.vault.read(noteFile);
+        const frontmatterMatch = content.match(/^---\n[\s\S]*?\n---\n/);
 
-        if (existingEmbed) {
-          newContent = embedSyntax + content.slice(existingEmbed[0].length);
+        let newContent: string;
+        if (frontmatterMatch) {
+          const frontmatter = frontmatterMatch[0];
+          const restContent = content.slice(frontmatter.length);
+          newContent = frontmatter + embedSyntax + restContent;
         } else {
           newContent = embedSyntax + content;
         }
-      }
 
-      await this.app.vault.modify(noteFile, newContent);
+        await this.app.vault.modify(noteFile, newContent);
+      }
     } catch (error) {
       throw this.createError('SAVE_ERROR', `Failed to embed slide: ${error instanceof Error ? error.message : String(error)}`);
     }

@@ -720,7 +720,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: '노트에 삽입 중...'
       });
 
-      await this.fileService.embedSlideInNote(noteFile, slidePath, githubPagesUrl);
+      await this.fileService.embedSlideInNote(noteFile, slidePath, githubPagesUrl, editor);
 
       progressModal?.updateProgress({
         step: 'complete',
