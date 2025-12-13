@@ -1,7 +1,7 @@
 import { App, Modal } from 'obsidian';
 import { ProgressState, ProgressStep } from '../types';
 
-export type ProgressMode = 'image' | 'slide';
+export type ProgressMode = 'image' | 'slide' | 'pptx';
 
 export class ProgressModal extends Modal {
   private state: ProgressState;
@@ -32,8 +32,19 @@ export class ProgressModal extends Modal {
     { step: 'complete', label: '완료!', icon: '✅' }
   ];
 
+  private readonly pptxSteps: { step: ProgressStep; label: string; icon: string }[] = [
+    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
+    { step: 'generating-slide', label: 'PPTX 데이터 생성 중...', icon: '🎴' },
+    { step: 'saving', label: 'PPTX 파일 생성 중...', icon: '💾' },
+    { step: 'uploading', label: 'Google Drive에 업로드 중...', icon: '☁️' },
+    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
+    { step: 'complete', label: '완료!', icon: '✅' }
+  ];
+
   private get steps() {
-    return this.mode === 'slide' ? this.slideSteps : this.imageSteps;
+    if (this.mode === 'pptx') return this.pptxSteps;
+    if (this.mode === 'slide') return this.slideSteps;
+    return this.imageSteps;
   }
 
   constructor(app: App, onCancel?: () => void, mode: ProgressMode = 'image') {
@@ -52,7 +63,8 @@ export class ProgressModal extends Modal {
     contentEl.empty();
     contentEl.addClass('nanobanana-progress-modal');
 
-    const title = this.mode === 'slide' ? '🎴 슬라이드 생성 중' : '🎨 포스터 생성 중';
+    const title = this.mode === 'pptx' ? '📊 PPTX 생성 중' :
+                  this.mode === 'slide' ? '🎴 슬라이드 생성 중' : '🎨 포스터 생성 중';
     contentEl.createEl('h2', { text: title });
 
     // Step list

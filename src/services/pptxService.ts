@@ -1537,6 +1537,9 @@ export class PptxService {
       jsonString = jsonString.substring(firstBrace, lastBrace + 1);
     }
 
+    // Try to fix common JSON issues before parsing
+    jsonString = this.sanitizeJsonString(jsonString);
+
     try {
       const data = JSON.parse(jsonString) as PptxPresentationData;
 
@@ -1564,5 +1567,25 @@ export class PptxService {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to parse PPTX JSON data: ${message}`);
     }
+  }
+
+  /**
+   * Attempt to fix common JSON formatting issues from AI responses
+   */
+  private sanitizeJsonString(jsonString: string): string {
+    // Remove trailing commas before ] or }
+    jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
+    // Fix unquoted property names (common AI mistake)
+    // Matches: { propertyName: "value" } -> { "propertyName": "value" }
+    jsonString = jsonString.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+
+    // Remove any control characters except newline and tab
+    jsonString = jsonString.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+    // Fix escaped single quotes that should be regular quotes in strings
+    // But be careful not to break valid escapes
+
+    return jsonString;
   }
 }

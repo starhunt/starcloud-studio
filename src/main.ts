@@ -798,7 +798,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        }, 'slide');
+        }, 'pptx');
         progressModal.open();
       }
 
