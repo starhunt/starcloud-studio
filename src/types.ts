@@ -262,6 +262,7 @@ export interface NanoBananaCloudSettings {
   customSlidePrompts: SlidePromptConfig[];
   showSlidePreviewBeforeGeneration: boolean;
   defaultSlideOutputFormat: SlideOutputFormat;
+  defaultPptxGenerationStyle: PptxGenerationStyle;
 
   // Git Integration for Slides
   gitEnabled: boolean;
@@ -494,6 +495,7 @@ export interface SlideOptionsResult {
   promptType: SlidePromptType | string;
   selectedPromptConfig: SlidePromptConfig;
   outputFormat: SlideOutputFormat;
+  pptxGenerationStyle: PptxGenerationStyle;
 }
 
 // ============================================================
@@ -604,4 +606,98 @@ export interface PptxGenerationResult {
   pptxBuffer: ArrayBuffer;
   title: string;
   slideCount: number;
+}
+
+// ============================================================
+// PPTX Generation Style (Standard vs Flexible)
+// ============================================================
+
+export type PptxGenerationStyle = 'standard' | 'flexible';
+
+// ============================================================
+// Generic Element Types for Flexible Mode
+// ============================================================
+
+export type PptxElementType = 'text' | 'shape' | 'bullets' | 'table' | 'chart' | 'icon-text';
+
+export interface PptxTextStyle {
+  fontSize?: number;
+  fontFace?: string;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  align?: 'left' | 'center' | 'right';
+  valign?: 'top' | 'middle' | 'bottom';
+}
+
+export interface PptxBaseElement {
+  type: PptxElementType;
+  x: number;      // inches from left (0-13.33)
+  y: number;      // inches from top (0-7.5)
+  w: number;      // width in inches
+  h: number;      // height in inches
+}
+
+export interface PptxTextElement extends PptxBaseElement {
+  type: 'text';
+  content: string;
+  style?: PptxTextStyle;
+}
+
+export interface PptxShapeElement extends PptxBaseElement {
+  type: 'shape';
+  shape: 'rect' | 'ellipse' | 'line' | 'roundRect';
+  fill?: string;        // hex color
+  line?: string;        // border color
+  lineWidth?: number;
+}
+
+export interface PptxBulletsElement extends PptxBaseElement {
+  type: 'bullets';
+  items: string[];
+  style?: PptxTextStyle;
+  bulletColor?: string;
+}
+
+export interface PptxTableElement extends PptxBaseElement {
+  type: 'table';
+  headers: string[];
+  rows: string[][];
+  headerColor?: string;
+  headerBgColor?: string;
+}
+
+export interface PptxChartElement extends PptxBaseElement {
+  type: 'chart';
+  chartType: 'bar' | 'pie' | 'line' | 'doughnut';
+  labels: string[];
+  values: number[];
+  colors?: string[];
+}
+
+export interface PptxIconTextElement extends PptxBaseElement {
+  type: 'icon-text';
+  icon: string;         // emoji
+  text: string;
+  style?: PptxTextStyle;
+}
+
+export type PptxElement =
+  | PptxTextElement
+  | PptxShapeElement
+  | PptxBulletsElement
+  | PptxTableElement
+  | PptxChartElement
+  | PptxIconTextElement;
+
+export interface PptxFlexibleSlideData {
+  background?: string;  // hex color or 'white'
+  elements: PptxElement[];
+  notes?: string;
+}
+
+export interface PptxFlexiblePresentationData {
+  title: string;
+  author?: string;
+  slides: PptxFlexibleSlideData[];
 }

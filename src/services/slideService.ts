@@ -5,7 +5,8 @@ import {
   GenerationError,
   GenerationErrorClass,
   PROVIDER_CONFIGS,
-  PptxPresentationData
+  PptxPresentationData,
+  PptxFlexiblePresentationData
 } from '../types';
 
 export class SlideService {
@@ -80,6 +81,88 @@ export class SlideService {
         throw error;
       }
       throw this.handleApiError(error, provider);
+    }
+  }
+
+  /**
+   * Generate Flexible PPTX slide data (element-based JSON) from content
+   */
+  async generateFlexiblePptxSlideData(
+    content: string,
+    provider: AIProvider,
+    model: string,
+    apiKey: string,
+    systemPrompt: string
+  ): Promise<PptxFlexiblePresentationData> {
+    if (!apiKey) {
+      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+    }
+
+    if (!content.trim()) {
+      throw this.createError('NO_CONTENT', 'Content is empty');
+    }
+
+    try {
+      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt);
+
+      // Extract and parse flexible JSON from response
+      const presentationData = this.extractFlexibleJsonFromResponse(response);
+
+      return presentationData;
+    } catch (error) {
+      if (error instanceof GenerationErrorClass) {
+        throw error;
+      }
+      throw this.handleApiError(error, provider);
+    }
+  }
+
+  /**
+   * Extract and parse flexible PPTX JSON data from AI response
+   */
+  private extractFlexibleJsonFromResponse(response: string): PptxFlexiblePresentationData {
+    let jsonString = response.trim();
+
+    // Remove markdown code blocks if present
+    const jsonBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (jsonBlockMatch) {
+      jsonString = jsonBlockMatch[1].trim();
+    }
+
+    // Try to find JSON object boundaries
+    const firstBrace = jsonString.indexOf('{');
+    const lastBrace = jsonString.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+    }
+
+    try {
+      const data = JSON.parse(jsonString) as PptxFlexiblePresentationData;
+
+      // Validate required fields
+      if (!data.title) {
+        data.title = 'Untitled Presentation';
+      }
+
+      if (!data.slides || !Array.isArray(data.slides)) {
+        throw new Error('Invalid presentation data: slides array is required');
+      }
+
+      // Validate each slide has elements array
+      for (let i = 0; i < data.slides.length; i++) {
+        if (!data.slides[i].elements) {
+          data.slides[i].elements = [];
+        }
+        if (!Array.isArray(data.slides[i].elements)) {
+          data.slides[i].elements = [];
+        }
+      }
+
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw this.createError('GENERATION_FAILED', `Failed to parse Flexible PPTX JSON data: ${message}`);
     }
   }
 

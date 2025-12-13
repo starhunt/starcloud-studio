@@ -829,22 +829,38 @@ export default class NanoBananaCloudPlugin extends Plugin {
       });
 
       const systemPrompt = options.selectedPromptConfig.prompt;
-      const presentationData = await this.slideService.generatePptxSlideData(
-        content,
-        this.settings.selectedProvider,
-        this.settings.promptModel,
-        apiKey,
-        systemPrompt
-      );
+      const isFlexibleMode = options.pptxGenerationStyle === 'flexible';
 
-      // Generate PPTX file
+      // Generate PPTX file based on mode
       progressModal?.updateProgress({
         step: 'saving',
         progress: 50,
         message: 'PPTX 파일 생성 중...'
       });
 
-      const pptxResult = await this.pptxService.generatePptx(presentationData);
+      let pptxResult;
+
+      if (isFlexibleMode) {
+        // Flexible mode: element-based layout
+        const flexibleData = await this.slideService.generateFlexiblePptxSlideData(
+          content,
+          this.settings.selectedProvider,
+          this.settings.promptModel,
+          apiKey,
+          systemPrompt
+        );
+        pptxResult = await this.pptxService.generateFlexiblePptx(flexibleData);
+      } else {
+        // Standard mode: fixed slide types
+        const presentationData = await this.slideService.generatePptxSlideData(
+          content,
+          this.settings.selectedProvider,
+          this.settings.promptModel,
+          apiKey,
+          systemPrompt
+        );
+        pptxResult = await this.pptxService.generatePptx(presentationData);
+      }
 
       // Upload to Google Drive
       progressModal?.updateProgress({
@@ -853,7 +869,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: 'Google Drive에 업로드 중...'
       });
 
-      const fileName = this.sanitizePptxFileName(presentationData.title) + '.pptx';
+      const fileName = this.sanitizePptxFileName(pptxResult.title) + '.pptx';
       const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
       const uploadResult = await this.driveUploadService.uploadBuffer(
@@ -878,7 +894,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         message: '노트에 삽입 중...'
       });
 
-      const embedCode = this.generatePptxEmbed(uploadResult, presentationData.title);
+      const embedCode = this.generatePptxEmbed(uploadResult, pptxResult.title);
       const cursor = editor.getCursor();
       editor.replaceRange(embedCode + '\n\n', cursor);
 
@@ -944,7 +960,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
         this.settings.customSlidePrompts || [],
         (result) => resolve(result),
         this.settings.preferredLanguage,
-        this.settings.defaultSlideOutputFormat || 'html'
+        this.settings.defaultSlideOutputFormat || 'html',
+        this.settings.defaultPptxGenerationStyle || 'standard'
       );
       modal.open();
     });

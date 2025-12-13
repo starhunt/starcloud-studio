@@ -4,7 +4,21 @@
  * Optimized for educational/learning slides (NotebookLM-style)
  */
 import pptxgen from 'pptxgenjs';
-import { PptxPresentationData, PptxSlideData, PptxGenerationResult, PptxSectionTheme } from '../types';
+import {
+  PptxPresentationData,
+  PptxSlideData,
+  PptxGenerationResult,
+  PptxSectionTheme,
+  PptxFlexiblePresentationData,
+  PptxFlexibleSlideData,
+  PptxElement,
+  PptxTextElement,
+  PptxShapeElement,
+  PptxBulletsElement,
+  PptxTableElement,
+  PptxChartElement,
+  PptxIconTextElement,
+} from '../types';
 
 // Section color themes
 interface SectionColors {
@@ -1708,5 +1722,370 @@ export class PptxService {
     // But be careful not to break valid escapes
 
     return jsonString;
+  }
+
+  // ============================================
+  // Flexible Mode - Generic Element Rendering
+  // ============================================
+
+  /**
+   * Generate PPTX from flexible (element-based) JSON data
+   */
+  async generateFlexiblePptx(data: PptxFlexiblePresentationData): Promise<PptxGenerationResult> {
+    const pres = new pptxgen();
+
+    // Set presentation properties
+    pres.title = data.title;
+    pres.author = data.author || 'NanoBanana Cloud';
+    pres.subject = 'Educational Presentation';
+    pres.company = 'NanoBanana Cloud';
+
+    // Set 16:9 layout
+    pres.defineLayout({ name: 'CUSTOM', width: 13.33, height: 7.5 });
+    pres.layout = 'CUSTOM';
+
+    // Generate slides
+    const slides = data.slides && Array.isArray(data.slides) ? data.slides : [];
+    for (const slideData of slides) {
+      if (slideData) {
+        this.addFlexibleSlide(pres, slideData);
+      }
+    }
+
+    // Generate PPTX buffer
+    const pptxBuffer = await pres.write({ outputType: 'arraybuffer' }) as ArrayBuffer;
+
+    return {
+      pptxBuffer,
+      title: data.title || 'Presentation',
+      slideCount: slides.length,
+    };
+  }
+
+  /**
+   * Add a flexible slide with generic elements
+   */
+  private addFlexibleSlide(pres: pptxgen, slideData: PptxFlexibleSlideData): void {
+    const slide = pres.addSlide();
+
+    // Set background
+    const bgColor = slideData.background || 'FFFFFF';
+    slide.background = { color: bgColor.replace('#', '') };
+
+    // Render each element
+    const elements = slideData.elements && Array.isArray(slideData.elements) ? slideData.elements : [];
+    for (const element of elements) {
+      if (element) {
+        this.renderElement(pres, slide, element);
+      }
+    }
+
+    // Add notes if provided
+    if (slideData.notes) {
+      slide.addNotes(slideData.notes);
+    }
+  }
+
+  /**
+   * Dispatch element rendering to specific renderer
+   */
+  private renderElement(pres: pptxgen, slide: pptxgen.Slide, element: PptxElement): void {
+    switch (element.type) {
+      case 'text':
+        this.renderTextElement(slide, element as PptxTextElement);
+        break;
+      case 'shape':
+        this.renderShapeElement(pres, slide, element as PptxShapeElement);
+        break;
+      case 'bullets':
+        this.renderBulletsElement(slide, element as PptxBulletsElement);
+        break;
+      case 'table':
+        this.renderTableElement(slide, element as PptxTableElement);
+        break;
+      case 'chart':
+        this.renderChartElement(pres, slide, element as PptxChartElement);
+        break;
+      case 'icon-text':
+        this.renderIconTextElement(slide, element as PptxIconTextElement);
+        break;
+      default:
+        console.warn(`Unknown element type: ${(element as PptxElement).type}`);
+    }
+  }
+
+  /**
+   * Render text element
+   */
+  private renderTextElement(slide: pptxgen.Slide, element: PptxTextElement): void {
+    const style = element.style || {};
+    slide.addText(element.content || '', {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      h: element.h,
+      fontSize: style.fontSize || 16,
+      fontFace: style.fontFace || this.FONTS.body,
+      color: (style.color || this.TEXT.dark).replace('#', ''),
+      bold: style.bold || false,
+      italic: style.italic || false,
+      align: style.align || 'left',
+      valign: style.valign || 'top',
+    });
+  }
+
+  /**
+   * Render shape element
+   */
+  private renderShapeElement(pres: pptxgen, slide: pptxgen.Slide, element: PptxShapeElement): void {
+    let shapeType: pptxgen.SHAPE_NAME;
+
+    switch (element.shape) {
+      case 'rect':
+        shapeType = pres.ShapeType.rect;
+        break;
+      case 'ellipse':
+        shapeType = pres.ShapeType.ellipse;
+        break;
+      case 'line':
+        shapeType = pres.ShapeType.line;
+        break;
+      case 'roundRect':
+        shapeType = pres.ShapeType.roundRect;
+        break;
+      default:
+        shapeType = pres.ShapeType.rect;
+    }
+
+    const shapeOptions: pptxgen.ShapeProps = {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      h: element.h,
+    };
+
+    if (element.fill) {
+      shapeOptions.fill = { color: element.fill.replace('#', '') };
+    }
+
+    if (element.line) {
+      shapeOptions.line = {
+        color: element.line.replace('#', ''),
+        width: element.lineWidth || 1,
+      };
+    }
+
+    slide.addShape(shapeType, shapeOptions);
+  }
+
+  /**
+   * Render bullets element
+   */
+  private renderBulletsElement(slide: pptxgen.Slide, element: PptxBulletsElement): void {
+    const items = element.items && Array.isArray(element.items) ? element.items : [];
+    if (items.length === 0) return;
+
+    const style = element.style || {};
+    const bulletColor = (element.bulletColor || '2563EB').replace('#', '');
+
+    const bulletText = items.map(item => ({
+      text: item || '',
+      options: { bullet: { type: 'bullet' as const, color: bulletColor }, indentLevel: 0 },
+    }));
+
+    slide.addText(bulletText, {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      h: element.h,
+      fontSize: style.fontSize || 14,
+      fontFace: style.fontFace || this.FONTS.body,
+      color: (style.color || this.TEXT.dark).replace('#', ''),
+      valign: style.valign || 'top',
+      lineSpacing: 28,
+    });
+  }
+
+  /**
+   * Render table element
+   */
+  private renderTableElement(slide: pptxgen.Slide, element: PptxTableElement): void {
+    const headers = element.headers && Array.isArray(element.headers) ? element.headers : [];
+    const rows = element.rows && Array.isArray(element.rows) ? element.rows : [];
+
+    if (headers.length === 0 && rows.length === 0) return;
+
+    const headerBgColor = (element.headerBgColor || '2563EB').replace('#', '');
+    const headerColor = (element.headerColor || 'FFFFFF').replace('#', '');
+
+    const tableRows: pptxgen.TableRow[] = [];
+
+    // Header row
+    if (headers.length > 0) {
+      tableRows.push(headers.map(h => ({
+        text: h || '',
+        options: {
+          fill: { color: headerBgColor },
+          color: headerColor,
+          bold: true,
+          align: 'center' as const,
+          valign: 'middle' as const,
+        }
+      })));
+    }
+
+    // Data rows
+    rows.forEach((row, idx) => {
+      if (!Array.isArray(row)) return;
+      const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
+      tableRows.push(row.map((cell, cellIdx) => ({
+        text: cell || '',
+        options: {
+          fill: { color: bgColor },
+          color: this.TEXT.dark,
+          align: cellIdx === 0 ? 'left' as const : 'center' as const,
+          valign: 'middle' as const,
+        }
+      })));
+    });
+
+    if (tableRows.length === 0) return;
+
+    const colCount = headers.length || (rows[0]?.length || 1);
+    const colW = element.w / colCount;
+
+    slide.addTable(tableRows, {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      colW: Array(colCount).fill(colW),
+      fontFace: this.FONTS.body,
+      fontSize: 12,
+      border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
+      rowH: 0.5,
+    });
+  }
+
+  /**
+   * Render chart element
+   */
+  private renderChartElement(pres: pptxgen, slide: pptxgen.Slide, element: PptxChartElement): void {
+    const labels = element.labels && Array.isArray(element.labels) ? element.labels : [];
+    const values = element.values && Array.isArray(element.values) ? element.values : [];
+
+    if (labels.length === 0 || values.length === 0) return;
+
+    const chartData = [{
+      name: 'Data',
+      labels: labels,
+      values: values,
+    }];
+
+    const defaultColors = ['2563EB', '3B82F6', '1D4ED8', '94A3B8', 'CBD5E1'];
+    const chartColors = element.colors && Array.isArray(element.colors)
+      ? element.colors.map(c => c.replace('#', ''))
+      : defaultColors;
+
+    let chartType: pptxgen.CHART_NAME;
+    switch (element.chartType) {
+      case 'bar':
+        chartType = pres.ChartType.bar;
+        break;
+      case 'pie':
+        chartType = pres.ChartType.pie;
+        break;
+      case 'line':
+        chartType = pres.ChartType.line;
+        break;
+      case 'doughnut':
+        chartType = pres.ChartType.doughnut;
+        break;
+      default:
+        chartType = pres.ChartType.bar;
+    }
+
+    slide.addChart(chartType, chartData, {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      h: element.h,
+      chartColors: chartColors,
+      showLegend: true,
+      legendPos: 'b',
+      showValue: true,
+      dataLabelPosition: 'outEnd',
+    });
+  }
+
+  /**
+   * Render icon-text element (emoji + text)
+   */
+  private renderIconTextElement(slide: pptxgen.Slide, element: PptxIconTextElement): void {
+    const style = element.style || {};
+    const content = `${element.icon || ''} ${element.text || ''}`.trim();
+
+    slide.addText(content, {
+      x: element.x,
+      y: element.y,
+      w: element.w,
+      h: element.h,
+      fontSize: style.fontSize || 14,
+      fontFace: style.fontFace || this.FONTS.body,
+      color: (style.color || this.TEXT.dark).replace('#', ''),
+      bold: style.bold || false,
+      align: style.align || 'left',
+      valign: style.valign || 'middle',
+    });
+  }
+
+  /**
+   * Parse JSON response from AI for flexible mode
+   */
+  parseFlexibleJsonResponse(response: string): PptxFlexiblePresentationData {
+    let jsonString = response.trim();
+
+    // Remove markdown code blocks if present
+    const jsonBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (jsonBlockMatch) {
+      jsonString = jsonBlockMatch[1].trim();
+    }
+
+    // Find JSON object boundaries
+    const firstBrace = jsonString.indexOf('{');
+    const lastBrace = jsonString.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+    }
+
+    // Sanitize JSON
+    jsonString = this.sanitizeJsonString(jsonString);
+
+    try {
+      const data = JSON.parse(jsonString) as PptxFlexiblePresentationData;
+
+      if (!data.title) {
+        data.title = 'Untitled Presentation';
+      }
+
+      if (!data.slides || !Array.isArray(data.slides)) {
+        throw new Error('Invalid presentation data: slides array is required');
+      }
+
+      // Validate each slide has elements array
+      for (let i = 0; i < data.slides.length; i++) {
+        if (!data.slides[i].elements) {
+          data.slides[i].elements = [];
+        }
+        if (!Array.isArray(data.slides[i].elements)) {
+          data.slides[i].elements = [];
+        }
+      }
+
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse Flexible PPTX JSON data: ${message}`);
+    }
   }
 }

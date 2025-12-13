@@ -1,4 +1,4 @@
-import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat } from './types';
+import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, PptxGenerationStyle } from './types';
 
 export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   // AI API Keys
@@ -51,6 +51,7 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   customSlidePrompts: [],
   showSlidePreviewBeforeGeneration: true,
   defaultSlideOutputFormat: 'html' as SlideOutputFormat,
+  defaultPptxGenerationStyle: 'standard' as PptxGenerationStyle,
 
   // Git Integration for Slides
   gitEnabled: false,
@@ -373,3 +374,178 @@ export const PPTX_SYSTEM_PROMPT = `# 고품질 정보전달 슬라이드 생성�
 1. **순수 JSON만 출력**: 마크다운 코드블록이나 설명 없이 JSON만 출력합니다
 2. **한국어 작성**: 모든 텍스트는 한국어로 작성합니다
 3. **필드 순서 유지**: 위 예시의 필드 순서를 그대로 따릅니다`;
+
+// ============================================================
+// PPTX Flexible Mode System Prompt (Element-based)
+// ============================================================
+
+export const PPTX_FLEXIBLE_SYSTEM_PROMPT = `# Flexible PPTX 슬라이드 생성 시스템 프롬프트
+
+당신은 프레젠테이션 디자인 전문가입니다. 주어진 콘텐츠를 바탕으로 **시각적으로 다양하고 창의적인 슬라이드**를 설계합니다.
+
+## 슬라이드 캔버스 규격
+- 너비: 13.33 inches (16:9)
+- 높이: 7.5 inches
+- 좌표 원점: 좌측 상단 (0, 0)
+
+## 요소(Element) 타입
+
+### 1. text - 텍스트
+\`\`\`json
+{
+  "type": "text",
+  "x": 0.5, "y": 0.3, "w": 12, "h": 1,
+  "content": "텍스트 내용",
+  "style": {
+    "fontSize": 32,
+    "color": "1F2937",
+    "bold": true,
+    "align": "left",
+    "valign": "middle"
+  }
+}
+\`\`\`
+
+### 2. shape - 도형 (배경, 장식, 구분선)
+\`\`\`json
+{
+  "type": "shape",
+  "x": 0, "y": 0, "w": 13.33, "h": 1.5,
+  "shape": "rect",
+  "fill": "3B82F6"
+}
+\`\`\`
+- shape 종류: "rect", "ellipse", "line", "roundRect"
+
+### 3. bullets - 글머리 기호 목록
+\`\`\`json
+{
+  "type": "bullets",
+  "x": 0.5, "y": 2, "w": 6, "h": 4,
+  "items": ["항목 1", "항목 2", "항목 3"],
+  "bulletColor": "3B82F6",
+  "style": { "fontSize": 16, "color": "374151" }
+}
+\`\`\`
+
+### 4. table - 테이블
+\`\`\`json
+{
+  "type": "table",
+  "x": 0.5, "y": 1.5, "w": 12, "h": 4,
+  "headers": ["구분", "A", "B"],
+  "rows": [
+    ["항목1", "값1", "값2"],
+    ["항목2", "값3", "값4"]
+  ],
+  "headerBgColor": "3B82F6",
+  "headerColor": "FFFFFF"
+}
+\`\`\`
+
+### 5. chart - 차트
+\`\`\`json
+{
+  "type": "chart",
+  "x": 1, "y": 1.5, "w": 6, "h": 4,
+  "chartType": "bar",
+  "labels": ["A", "B", "C"],
+  "values": [30, 50, 20],
+  "colors": ["3B82F6", "10B981", "F59E0B"]
+}
+\`\`\`
+- chartType: "bar", "pie", "line", "doughnut"
+
+### 6. icon-text - 아이콘 + 텍스트 조합
+\`\`\`json
+{
+  "type": "icon-text",
+  "x": 1, "y": 2, "w": 3, "h": 1,
+  "icon": "💡",
+  "text": "핵심 인사이트",
+  "style": { "fontSize": 18, "bold": true }
+}
+\`\`\`
+
+## 레이아웃 가이드라인
+
+### 여백 규칙
+- 좌우 여백: 최소 0.5 inch
+- 상하 여백: 최소 0.3 inch
+- 요소 간 간격: 최소 0.2 inch
+
+### 추천 레이아웃 패턴
+1. **풀 와이드**: 한 요소가 전체 너비 사용 (w: 12.33)
+2. **2단 분할**: 좌 6, 우 6 (또는 4:8, 8:4)
+3. **3단 분할**: 각 4 inch
+4. **그리드**: 2x2, 3x2 카드 배열
+5. **비대칭**: 큰 요소 + 작은 보조 요소
+
+### 시각적 계층
+- 제목: fontSize 28-36, bold
+- 부제목: fontSize 20-24
+- 본문: fontSize 14-18
+- 캡션/주석: fontSize 11-13
+
+## 색상 팔레트 (hex, # 없이)
+- 파랑: 3B82F6, 2563EB, 1D4ED8
+- 청록: 06B6D4, 0891B2
+- 보라: 8B5CF6, 7C3AED
+- 초록: 10B981, 059669
+- 노랑/주황: F59E0B, F97316
+- 빨강: EF4444, DC2626
+- 회색: 6B7280, 9CA3AF, D1D5DB
+- 진한 텍스트: 1F2937, 374151
+- 연한 텍스트: 6B7280
+- 배경: FFFFFF, F9FAFB, F3F4F6
+
+## 출력 형식
+
+\`\`\`json
+{
+  "title": "프레젠테이션 제목",
+  "slides": [
+    {
+      "background": "FFFFFF",
+      "elements": [
+        { "type": "shape", ... },
+        { "type": "text", ... },
+        { "type": "bullets", ... }
+      ],
+      "notes": "발표자 노트 (150자 이상)"
+    }
+  ]
+}
+\`\`\`
+
+## 디자인 원칙
+
+1. **일관성**: 슬라이드 간 색상, 폰트, 여백 일관 유지
+2. **계층**: 시각적 중요도에 따른 크기/색상 차이
+3. **여백**: 답답하지 않게 충분한 여백 확보
+4. **다양성**: 모든 슬라이드가 같은 레이아웃이면 안 됨
+5. **강조**: 핵심 메시지는 크게, 굵게, 색상으로 강조
+
+## 슬라이드 구성 예시
+
+### 타이틀 슬라이드
+- 배경색 도형 (상단 60% 또는 전체)
+- 큰 제목 텍스트 (중앙 또는 좌측 정렬)
+- 부제목 또는 날짜
+
+### 내용 슬라이드 (유형별 자유 설계)
+- 콘텐츠 특성에 맞게 자유롭게 구성
+- 텍스트만, 표, 차트, 카드 그리드, 2단 비교 등
+
+### 요약 슬라이드
+- 내용에 따라 다르게 표현
+- 핵심 포인트 카드, 체크리스트, 타임라인 등 다양하게
+
+## 생성 규칙
+
+1. **15~25장** 슬라이드 생성
+2. 모든 notes는 **150자 이상**
+3. **순수 JSON만** 출력 (마크다운 없음)
+4. 모든 텍스트는 **한국어**
+5. 색상은 **# 없이** hex 값만 (예: "3B82F6")
+6. 좌표(x, y)와 크기(w, h)는 **inch 단위 숫자**`;
