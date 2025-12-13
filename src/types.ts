@@ -532,8 +532,9 @@ export interface PptxSlideData {
   subtitle?: string;
   description?: string;
 
-  // title, section
+  // title, section - used for inline section indication on content slides
   sectionNumber?: string;
+  sectionTitle?: string;
 
   // agenda
   items?: Array<{ number: string; title: string; description: string }>;
@@ -554,7 +555,7 @@ export interface PptxSlideData {
 
   // comparison
   headers?: string[];
-  rows?: Array<{ aspect: string; itemA: string; itemB: string }> | string[][];
+  rows?: Array<{ aspect: string; values: string[] }> | Array<{ aspect: string; itemA: string; itemB: string }> | string[][];
   conclusion?: string;
 
   // chart

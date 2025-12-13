@@ -106,6 +106,32 @@ export class PptxService {
   }
 
   /**
+   * Add section indicator (sectionNumber + sectionTitle) at top-right of slide
+   */
+  private addSectionIndicator(slide: pptxgen.Slide, data: PptxSlideData, theme: SectionColors): void {
+    if (data.sectionNumber || data.sectionTitle) {
+      const sectionText = [
+        data.sectionNumber ? `${data.sectionNumber}` : '',
+        data.sectionTitle ? ` ${data.sectionTitle}` : ''
+      ].join('').trim();
+
+      if (sectionText) {
+        slide.addText(sectionText, {
+          x: 9.5,
+          y: 0.15,
+          w: 3.33,
+          h: 0.35,
+          fontSize: 11,
+          fontFace: this.FONTS.body,
+          color: theme.primary,
+          align: 'right',
+          valign: 'middle',
+        });
+      }
+    }
+  }
+
+  /**
    * Add a slide based on its type
    */
   private addSlide(pres: pptxgen, slideData: PptxSlideData): void {
@@ -352,6 +378,9 @@ export class PptxService {
     const slide = pres.addSlide();
     slide.background = { color: theme.background };
 
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
+
     // Term (large)
     if (data.term) {
       slide.addText(data.term, {
@@ -468,6 +497,9 @@ export class PptxService {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
 
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
+
     // Title with accent bar
     slide.addShape(pres.ShapeType.rect, {
       x: 0.5,
@@ -568,6 +600,9 @@ export class PptxService {
   private addProcessSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
+
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
 
     // Title
     if (data.title) {
@@ -675,6 +710,9 @@ export class PptxService {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
 
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
+
     // Title
     if (data.title) {
       slide.addText(data.title, {
@@ -718,7 +756,7 @@ export class PptxService {
         }
       })));
 
-      // Data rows - handle both formats
+      // Data rows - handle all formats
       data.rows.forEach((row, idx) => {
         const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
 
@@ -733,8 +771,19 @@ export class PptxService {
               valign: 'middle' as const,
             }
           })));
+        } else if ('values' in row && Array.isArray(row.values)) {
+          // New v2 format: { aspect, values: string[] }
+          const compRow = row as { aspect: string; values: string[] };
+          const cells = [
+            { text: compRow.aspect, options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
+            ...compRow.values.map(val => ({
+              text: val,
+              options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const }
+            }))
+          ];
+          tableRows.push(cells);
         } else {
-          // { aspect, itemA, itemB } format
+          // Legacy format: { aspect, itemA, itemB }
           const compRow = row as { aspect: string; itemA: string; itemB: string };
           tableRows.push([
             { text: compRow.aspect, options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
@@ -744,11 +793,17 @@ export class PptxService {
         }
       });
 
+      // Calculate dynamic column widths based on header count
+      const colCount = data.headers.length;
+      const firstColW = 3.5;  // Aspect column is wider
+      const remainingW = (12.33 - firstColW) / (colCount - 1);
+      const colWidths = [firstColW, ...Array(colCount - 1).fill(remainingW)];
+
       slide.addTable(tableRows, {
         x: 0.5,
         y: 1.6,
         w: 12.33,
-        colW: [4, 4.165, 4.165],
+        colW: colWidths,
         fontFace: this.FONTS.body,
         fontSize: 13,
         border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
@@ -788,6 +843,9 @@ export class PptxService {
   private addChartSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
+
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
 
     // Title
     if (data.title) {
@@ -888,6 +946,9 @@ export class PptxService {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
 
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
+
     // Title
     if (data.title) {
       slide.addText(data.title, {
@@ -970,6 +1031,9 @@ export class PptxService {
   private addCaseStudySlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
     slide.background = { color: 'FFFFFF' };
+
+    // Section indicator
+    this.addSectionIndicator(slide, data, theme);
 
     // Title with case study badge
     slide.addShape(pres.ShapeType.rect, {
