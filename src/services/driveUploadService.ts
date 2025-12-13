@@ -488,8 +488,11 @@ export class DriveUploadService {
       // Get or create folder (with year/month structure if enabled)
       const folderId = await this.ensureFolderWithDateStructure(baseFolderPath, organizeFoldersByDate);
 
+      // Add timestamp prefix to filename
+      const timestampedFileName = this.addTimestampPrefix(file.name);
+
       // Check for duplicate filename and get unique name
-      const uniqueFileName = await this.getUniqueFileName(folderId, file.name, accessToken);
+      const uniqueFileName = await this.getUniqueFileName(folderId, timestampedFileName, accessToken);
 
       // Stage 2: Uploading
       onProgress?.({
@@ -599,5 +602,20 @@ export class DriveUploadService {
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
     });
+  }
+
+  /**
+   * Add timestamp prefix to filename (yyyyMMddHHmmss_filename.ext)
+   */
+  private addTimestampPrefix(fileName: string): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+    return `${timestamp}_${fileName}`;
   }
 }

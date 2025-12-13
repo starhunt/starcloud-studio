@@ -1,0 +1,316 @@
+/* NanoBanana Cloud Plugin Styles */
+
+/* ============================================
+   Drive Upload Modal
+   ============================================ */
+
+.nanobanana-drive-upload-modal {
+  padding: 20px;
+}
+
+.nanobanana-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.nanobanana-modal-icon {
+  font-size: 24px;
+}
+
+.nanobanana-modal-title {
+  margin: 0;
+  color: var(--text-accent);
+}
+
+.nanobanana-modal-desc {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* Drop Zone */
+.nanobanana-drop-zone {
+  border: 2px dashed var(--background-modifier-border);
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+  background: var(--background-secondary);
+}
+
+.nanobanana-drop-zone:hover,
+.nanobanana-drop-zone-hover {
+  border-color: var(--text-accent);
+  background: var(--background-modifier-hover);
+}
+
+.nanobanana-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.nanobanana-drop-icon {
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+.nanobanana-drop-content p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* File Info */
+.nanobanana-file-info {
+  margin-bottom: 16px;
+}
+
+.nanobanana-selected-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.nanobanana-file-icon {
+  font-size: 32px;
+}
+
+.nanobanana-file-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nanobanana-file-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.nanobanana-file-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.nanobanana-btn-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.nanobanana-btn-clear:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Size Options */
+.nanobanana-size-options {
+  margin-bottom: 16px;
+}
+
+.nanobanana-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-normal);
+}
+
+.nanobanana-size-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.nanobanana-size-option {
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--background-primary);
+}
+
+.nanobanana-size-option:hover {
+  border-color: var(--text-accent);
+  background: var(--background-secondary);
+}
+
+.nanobanana-size-option.nanobanana-selected {
+  border-color: var(--text-accent);
+  background: var(--background-modifier-hover);
+}
+
+.nanobanana-size-name {
+  display: block;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 2px;
+}
+
+.nanobanana-size-dims {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.nanobanana-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--text-accent);
+  color: white;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+/* Title Toggle */
+.nanobanana-title-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.nanobanana-toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nanobanana-toggle-label span:first-child {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.nanobanana-toggle-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.nanobanana-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.nanobanana-btn-primary {
+  background: var(--interactive-accent);
+  color: white;
+}
+
+.nanobanana-btn-primary:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.nanobanana-btn-cancel {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.nanobanana-btn-cancel:hover {
+  background: var(--background-modifier-hover);
+}
+
+.nanobanana-button-row,
+.nanobanana-upload-button-container .nanobanana-button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Progress */
+.nanobanana-progress-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.nanobanana-progress-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--background-modifier-border);
+  border-top-color: var(--text-accent);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: nanobanana-spin 1s linear infinite;
+}
+
+@keyframes nanobanana-spin {
+  to { transform: rotate(360deg); }
+}
+
+.nanobanana-progress-message {
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.nanobanana-progress-bar {
+  height: 6px;
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.nanobanana-progress-fill {
+  height: 100%;
+  background: var(--text-accent);
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+/* Supported Formats */
+.nanobanana-formats-section {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.nanobanana-formats-section summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.nanobanana-formats-content {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.nanobanana-format-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.nanobanana-format-label {
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.nanobanana-format-exts {
+  color: var(--text-muted);
+}
+
+/* Hidden class */
+.nanobanana-hidden {
+  display: none !important;
+}
