@@ -84,8 +84,11 @@ export class PptxService {
     pres.layout = 'CUSTOM';
 
     // Generate slides
-    for (const slideData of data.slides) {
-      this.addSlide(pres, slideData);
+    const slides = data.slides && Array.isArray(data.slides) ? data.slides : [];
+    for (const slideData of slides) {
+      if (slideData) {
+        this.addSlide(pres, slideData);
+      }
     }
 
     // Generate PPTX buffer
@@ -93,8 +96,8 @@ export class PptxService {
 
     return {
       pptxBuffer,
-      title: data.title,
-      slideCount: data.slides.length,
+      title: data.title || 'Presentation',
+      slideCount: slides.length,
     };
   }
 
@@ -372,9 +375,10 @@ export class PptxService {
     });
 
     // Agenda items
-    if (data.items && data.items.length > 0) {
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
       let yPos = 1.3;
       data.items.forEach((item, index) => {
+        if (!item) return;
         // Number circle
         slide.addShape(pres.ShapeType.ellipse, {
           x: 0.5,
@@ -398,7 +402,7 @@ export class PptxService {
         });
 
         // Title
-        slide.addText(item.title, {
+        slide.addText(item.title || '', {
           x: 1.3,
           y: yPos,
           w: 4,
@@ -411,7 +415,7 @@ export class PptxService {
         });
 
         // Description
-        slide.addText(item.description, {
+        slide.addText(item.description || '', {
           x: 5.5,
           y: yPos,
           w: 7.3,
@@ -547,7 +551,7 @@ export class PptxService {
     }
 
     // Examples
-    if (data.examples && data.examples.length > 0) {
+    if (data.examples && Array.isArray(data.examples) && data.examples.length > 0) {
       slide.addText('예시', {
         x: 0.5,
         y: defY + 1.6,
@@ -577,7 +581,7 @@ export class PptxService {
     }
 
     // Related terms
-    if (data.relatedTerms && data.relatedTerms.length > 0) {
+    if (data.relatedTerms && Array.isArray(data.relatedTerms) && data.relatedTerms.length > 0) {
       slide.addText('관련 용어', {
         x: 7,
         y: defY + 1.6,
@@ -652,7 +656,7 @@ export class PptxService {
     }
 
     // Key points
-    if (data.keyPoints && data.keyPoints.length > 0) {
+    if (data.keyPoints && Array.isArray(data.keyPoints) && data.keyPoints.length > 0) {
       slide.addText('핵심 포인트', {
         x: 0.5,
         y: 2.6,
@@ -745,12 +749,13 @@ export class PptxService {
     }
 
     // Process steps
-    if (data.steps && data.steps.length > 0) {
+    if (data.steps && Array.isArray(data.steps) && data.steps.length > 0) {
       const stepCount = data.steps.length;
       const startY = 1.8;
       const stepHeight = Math.min(1.0, 4.5 / stepCount);
 
       data.steps.forEach((step, index) => {
+        if (!step) return;
         const yPos = startY + (index * stepHeight);
 
         // Step number circle
@@ -787,7 +792,7 @@ export class PptxService {
         }
 
         // Step title
-        slide.addText(step.title, {
+        slide.addText(step.title || '', {
           x: 1.2,
           y: yPos,
           w: 3.5,
@@ -800,7 +805,7 @@ export class PptxService {
         });
 
         // Step description
-        slide.addText(step.description, {
+        slide.addText(step.description || '', {
           x: 4.8,
           y: yPos,
           w: 8,
@@ -854,12 +859,12 @@ export class PptxService {
     }
 
     // Table headers and rows
-    if (data.headers && data.rows) {
+    if (data.headers && Array.isArray(data.headers) && data.headers.length > 0 && data.rows && Array.isArray(data.rows)) {
       const tableRows: pptxgen.TableRow[] = [];
 
       // Header row
       tableRows.push(data.headers.map(h => ({
-        text: h,
+        text: h || '',
         options: {
           fill: { color: theme.primary },
           color: 'FFFFFF',
@@ -871,12 +876,13 @@ export class PptxService {
 
       // Data rows - handle all formats
       data.rows.forEach((row, idx) => {
+        if (!row) return;
         const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
 
         if (Array.isArray(row)) {
           // string[][] format
           tableRows.push((row as string[]).map(cell => ({
-            text: cell,
+            text: cell || '',
             options: {
               fill: { color: bgColor },
               color: this.TEXT.dark,
@@ -884,33 +890,33 @@ export class PptxService {
               valign: 'middle' as const,
             }
           })));
-        } else if ('values' in row && Array.isArray(row.values)) {
+        } else if ('values' in row && Array.isArray((row as { values?: unknown }).values)) {
           // New v2 format: { aspect, values: string[] }
           const compRow = row as { aspect: string; values: string[] };
           const cells = [
-            { text: compRow.aspect, options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
-            ...compRow.values.map(val => ({
-              text: val,
+            { text: compRow.aspect || '', options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
+            ...(compRow.values || []).map(val => ({
+              text: val || '',
               options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const }
             }))
           ];
           tableRows.push(cells);
         } else {
           // Legacy format: { aspect, itemA, itemB }
-          const compRow = row as { aspect: string; itemA: string; itemB: string };
+          const compRow = row as { aspect?: string; itemA?: string; itemB?: string };
           tableRows.push([
-            { text: compRow.aspect, options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
-            { text: compRow.itemA, options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
-            { text: compRow.itemB, options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
+            { text: compRow.aspect || '', options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
+            { text: compRow.itemA || '', options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
+            { text: compRow.itemB || '', options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
           ]);
         }
       });
 
       // Calculate dynamic column widths based on header count
-      const colCount = data.headers.length;
+      const colCount = data.headers.length || 3;
       const firstColW = 3.5;  // Aspect column is wider
-      const remainingW = (12.33 - firstColW) / (colCount - 1);
-      const colWidths = [firstColW, ...Array(colCount - 1).fill(remainingW)];
+      const remainingW = colCount > 1 ? (12.33 - firstColW) / (colCount - 1) : 4.415;
+      const colWidths = colCount > 1 ? [firstColW, ...Array(colCount - 1).fill(remainingW)] : [12.33];
 
       slide.addTable(tableRows, {
         x: 0.5,
@@ -1090,12 +1096,12 @@ export class PptxService {
     }
 
     // Table
-    if (data.headers && data.rows) {
+    if (data.headers && Array.isArray(data.headers) && data.headers.length > 0 && data.rows && Array.isArray(data.rows)) {
       const tableRows: pptxgen.TableRow[] = [];
 
       // Header row
       tableRows.push(data.headers.map(h => ({
-        text: h,
+        text: h || '',
         options: {
           fill: { color: theme.primary },
           color: 'FFFFFF',
@@ -1108,9 +1114,10 @@ export class PptxService {
       // Data rows
       const rowsData = data.rows as string[][];
       rowsData.forEach((row, idx) => {
+        if (!Array.isArray(row)) return;
         const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
         tableRows.push(row.map((cell, cellIdx) => ({
-          text: cell,
+          text: cell || '',
           options: {
             fill: { color: bgColor },
             color: this.TEXT.dark,
@@ -1120,7 +1127,7 @@ export class PptxService {
         })));
       });
 
-      const colCount = data.headers.length;
+      const colCount = data.headers.length || 1;
       const colW = 12.33 / colCount;
 
       slide.addTable(tableRows, {
@@ -1218,7 +1225,7 @@ export class PptxService {
     });
 
     // Lessons learned
-    if (data.lessons && data.lessons.length > 0) {
+    if (data.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
       slide.addText('📚 교훈', {
         x: 0.5,
         y: 6.0,
@@ -1266,13 +1273,14 @@ export class PptxService {
     });
 
     // Key points as cards
-    if (data.points && data.points.length > 0) {
+    if (data.points && Array.isArray(data.points) && data.points.length > 0) {
       const cols = Math.min(data.points.length, 3);
       const cardWidth = (12.33 - (cols - 1) * 0.3) / cols;
       let row = 0;
       let col = 0;
 
       data.points.forEach((point, index) => {
+        if (!point) return;
         const x = 0.5 + col * (cardWidth + 0.3);
         const y = 1.4 + row * 2.2;
 
@@ -1309,7 +1317,7 @@ export class PptxService {
         });
 
         // Point title
-        slide.addText(point.title, {
+        slide.addText(point.title || '', {
           x: x + 0.65,
           y: y + 0.15,
           w: cardWidth - 0.8,
@@ -1322,7 +1330,7 @@ export class PptxService {
         });
 
         // Point description
-        slide.addText(point.description, {
+        slide.addText(point.description || '', {
           x: x + 0.15,
           y: y + 0.65,
           w: cardWidth - 0.3,
@@ -1364,7 +1372,7 @@ export class PptxService {
     });
 
     // Key takeaways
-    if (data.keyTakeaways && data.keyTakeaways.length > 0) {
+    if (data.keyTakeaways && Array.isArray(data.keyTakeaways) && data.keyTakeaways.length > 0) {
       slide.addText('핵심 내용', {
         x: 0.5,
         y: 1.3,
@@ -1394,7 +1402,7 @@ export class PptxService {
     }
 
     // Next steps
-    if (data.nextSteps && data.nextSteps.length > 0) {
+    if (data.nextSteps && Array.isArray(data.nextSteps) && data.nextSteps.length > 0) {
       slide.addText('다음 학습', {
         x: 7,
         y: 1.3,
@@ -1424,7 +1432,7 @@ export class PptxService {
     }
 
     // References
-    if (data.references && data.references.length > 0) {
+    if (data.references && Array.isArray(data.references) && data.references.length > 0) {
       slide.addText('참고 자료: ' + data.references.join(', '), {
         x: 0.5,
         y: 6.5,
@@ -1468,7 +1476,7 @@ export class PptxService {
       });
     }
 
-    if (data.bullets && data.bullets.length > 0) {
+    if (data.bullets && Array.isArray(data.bullets) && data.bullets.length > 0) {
       const bulletText = data.bullets.map(bullet => ({
         text: bullet,
         options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
@@ -1507,8 +1515,8 @@ export class PptxService {
       });
     }
 
-    if (data.leftColumn) {
-      slide.addText(data.leftColumn.header, {
+    if (data.leftColumn && typeof data.leftColumn === 'object') {
+      slide.addText(data.leftColumn.header || '', {
         x: 0.5,
         y: 1.5,
         w: 5.9,
@@ -1519,9 +1527,9 @@ export class PptxService {
         bold: true,
       });
 
-      if (data.leftColumn.items && data.leftColumn.items.length > 0) {
+      if (data.leftColumn.items && Array.isArray(data.leftColumn.items) && data.leftColumn.items.length > 0) {
         const leftBullets = data.leftColumn.items.map(item => ({
-          text: item,
+          text: item || '',
           options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
         }));
 
@@ -1539,8 +1547,8 @@ export class PptxService {
       }
     }
 
-    if (data.rightColumn) {
-      slide.addText(data.rightColumn.header, {
+    if (data.rightColumn && typeof data.rightColumn === 'object') {
+      slide.addText(data.rightColumn.header || '', {
         x: 6.9,
         y: 1.5,
         w: 5.9,
@@ -1551,9 +1559,9 @@ export class PptxService {
         bold: true,
       });
 
-      if (data.rightColumn.items && data.rightColumn.items.length > 0) {
+      if (data.rightColumn.items && Array.isArray(data.rightColumn.items) && data.rightColumn.items.length > 0) {
         const rightBullets = data.rightColumn.items.map(item => ({
-          text: item,
+          text: item || '',
           options: { bullet: { type: 'bullet' as const, color: theme.secondary }, indentLevel: 0 },
         }));
 
