@@ -502,18 +502,91 @@ export interface SlideOptionsResult {
 
 export type SlideOutputFormat = 'html' | 'pptx';
 
-export type PptxSlideType = 'title' | 'content' | 'two-column' | 'section' | 'image' | 'quote';
+export type PptxSlideType =
+  | 'title'
+  | 'agenda'
+  | 'section'
+  | 'definition'
+  | 'concept'
+  | 'process'
+  | 'comparison'
+  | 'chart'
+  | 'table'
+  | 'case-study'
+  | 'key-points'
+  | 'summary'
+  | 'content'      // legacy support
+  | 'two-column'   // legacy support
+  | 'quote'        // legacy support
+  | 'image';       // legacy support
+
+export type PptxSectionTheme = 'intro' | 'background' | 'concepts' | 'analysis' | 'application' | 'summary';
 
 export interface PptxSlideData {
   type: PptxSlideType;
+  section?: PptxSectionTheme;
+  notes?: string;
+
+  // Common fields
   title?: string;
   subtitle?: string;
+  description?: string;
+
+  // title, section
+  sectionNumber?: string;
+
+  // agenda
+  items?: Array<{ number: string; title: string; description: string }>;
+
+  // definition
+  term?: string;
+  definition?: string;
+  etymology?: string;
+  examples?: string[];
+  relatedTerms?: string[];
+
+  // concept
+  keyPoints?: string[];
+  insight?: string;
+
+  // process
+  steps?: Array<{ step: number; title: string; description: string }>;
+
+  // comparison
+  headers?: string[];
+  rows?: Array<{ aspect: string; itemA: string; itemB: string }> | string[][];
+  conclusion?: string;
+
+  // chart
+  chartType?: 'bar' | 'pie' | 'line' | 'doughnut';
+  data?: {
+    labels: string[];
+    values: number[];
+    colors?: string[];
+  };
+
+  // case-study
+  context?: string;
+  challenge?: string;
+  solution?: string;
+  result?: string;
+  lessons?: string[];
+
+  // key-points
+  icon?: string;
+  points?: Array<{ title: string; description: string }>;
+
+  // summary
+  keyTakeaways?: string[];
+  nextSteps?: string[];
+  references?: string[];
+
+  // Legacy fields
   bullets?: string[];
   leftColumn?: { header: string; items: string[] };
   rightColumn?: { header: string; items: string[] };
   imageUrl?: string;
   caption?: string;
-  notes?: string;
   quote?: string;
   author?: string;
 }

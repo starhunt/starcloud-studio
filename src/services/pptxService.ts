@@ -1,25 +1,70 @@
 /**
  * PPTX Generation Service
  * Converts structured JSON data to PowerPoint presentations using PptxGenJS
+ * Optimized for educational/learning slides (NotebookLM-style)
  */
 import pptxgen from 'pptxgenjs';
-import { PptxPresentationData, PptxSlideData, PptxGenerationResult } from '../types';
+import { PptxPresentationData, PptxSlideData, PptxGenerationResult, PptxSectionTheme } from '../types';
+
+// Section color themes
+interface SectionColors {
+  primary: string;
+  secondary: string;
+  background: string;
+  accent: string;
+}
+
+const SECTION_THEMES: Record<PptxSectionTheme, SectionColors> = {
+  intro: {
+    primary: '2563EB',      // Blue
+    secondary: '3B82F6',
+    background: 'EFF6FF',
+    accent: '1D4ED8'
+  },
+  background: {
+    primary: '0891B2',      // Cyan
+    secondary: '06B6D4',
+    background: 'ECFEFF',
+    accent: '0E7490'
+  },
+  concepts: {
+    primary: '7C3AED',      // Purple
+    secondary: '8B5CF6',
+    background: 'F5F3FF',
+    accent: '6D28D9'
+  },
+  analysis: {
+    primary: '4338CA',      // Indigo
+    secondary: '6366F1',
+    background: 'EEF2FF',
+    accent: '3730A3'
+  },
+  application: {
+    primary: '059669',      // Green
+    secondary: '10B981',
+    background: 'ECFDF5',
+    accent: '047857'
+  },
+  summary: {
+    primary: '1E40AF',      // Dark Blue
+    secondary: '3B82F6',
+    background: 'DBEAFE',
+    accent: '1E3A8A'
+  }
+};
 
 export class PptxService {
-  // Default theme colors
-  private readonly THEME = {
-    primary: '2563EB',      // Blue
-    secondary: '7C3AED',    // Purple
-    background: 'FFFFFF',   // White
-    text: '1F2937',         // Dark gray
-    textLight: '6B7280',    // Light gray
-    accent: '059669',       // Green
-  };
-
   // Default fonts
   private readonly FONTS = {
     title: 'Arial',
     body: 'Arial',
+  };
+
+  // Default text colors
+  private readonly TEXT = {
+    dark: '1F2937',
+    light: '6B7280',
+    white: 'FFFFFF',
   };
 
   /**
@@ -31,11 +76,12 @@ export class PptxService {
     // Set presentation properties
     pres.title = data.title;
     pres.author = data.author || 'NanoBanana Cloud';
-    pres.subject = data.subject || 'Generated Presentation';
+    pres.subject = data.subject || 'Educational Presentation';
     pres.company = 'NanoBanana Cloud';
 
-    // Apply default theme
-    this.applyDefaultTheme(pres);
+    // Set 16:9 layout
+    pres.defineLayout({ name: 'CUSTOM', width: 13.33, height: 7.5 });
+    pres.layout = 'CUSTOM';
 
     // Generate slides
     for (const slideData of data.slides) {
@@ -53,64 +99,87 @@ export class PptxService {
   }
 
   /**
-   * Apply default theme to presentation
+   * Get colors for a section theme
    */
-  private applyDefaultTheme(pres: pptxgen): void {
-    // Set default layout (16:9)
-    pres.defineLayout({ name: 'CUSTOM', width: 13.33, height: 7.5 });
-    pres.layout = 'CUSTOM';
+  private getThemeColors(section?: PptxSectionTheme): SectionColors {
+    return SECTION_THEMES[section || 'intro'];
   }
 
   /**
    * Add a slide based on its type
    */
   private addSlide(pres: pptxgen, slideData: PptxSlideData): void {
+    const theme = this.getThemeColors(slideData.section);
+
     switch (slideData.type) {
       case 'title':
-        this.addTitleSlide(pres, slideData);
+        this.addTitleSlide(pres, slideData, theme);
         break;
-      case 'content':
-        this.addContentSlide(pres, slideData);
-        break;
-      case 'two-column':
-        this.addTwoColumnSlide(pres, slideData);
+      case 'agenda':
+        this.addAgendaSlide(pres, slideData, theme);
         break;
       case 'section':
-        this.addSectionSlide(pres, slideData);
+        this.addSectionSlide(pres, slideData, theme);
         break;
-      case 'image':
-        this.addImageSlide(pres, slideData);
+      case 'definition':
+        this.addDefinitionSlide(pres, slideData, theme);
+        break;
+      case 'concept':
+        this.addConceptSlide(pres, slideData, theme);
+        break;
+      case 'process':
+        this.addProcessSlide(pres, slideData, theme);
+        break;
+      case 'comparison':
+        this.addComparisonSlide(pres, slideData, theme);
+        break;
+      case 'chart':
+        this.addChartSlide(pres, slideData, theme);
+        break;
+      case 'table':
+        this.addTableSlide(pres, slideData, theme);
+        break;
+      case 'case-study':
+        this.addCaseStudySlide(pres, slideData, theme);
+        break;
+      case 'key-points':
+        this.addKeyPointsSlide(pres, slideData, theme);
+        break;
+      case 'summary':
+        this.addSummarySlide(pres, slideData, theme);
+        break;
+      // Legacy types
+      case 'content':
+        this.addContentSlide(pres, slideData, theme);
+        break;
+      case 'two-column':
+        this.addTwoColumnSlide(pres, slideData, theme);
         break;
       case 'quote':
-        this.addQuoteSlide(pres, slideData);
+        this.addQuoteSlide(pres, slideData, theme);
         break;
       default:
-        // Fallback to content slide
-        this.addContentSlide(pres, slideData);
+        this.addContentSlide(pres, slideData, theme);
     }
   }
 
   /**
-   * Add title slide (first slide with main title and subtitle)
+   * Add title slide
    */
-  private addTitleSlide(pres: pptxgen, slideData: PptxSlideData): void {
+  private addTitleSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
-
-    // Background gradient
-    slide.background = {
-      color: this.THEME.primary,
-    };
+    slide.background = { color: theme.primary };
 
     // Main title
-    if (slideData.title) {
-      slide.addText(slideData.title, {
+    if (data.title) {
+      slide.addText(data.title, {
         x: 0.5,
         y: 2.5,
         w: 12.33,
         h: 1.5,
         fontSize: 44,
         fontFace: this.FONTS.title,
-        color: 'FFFFFF',
+        color: this.TEXT.white,
         bold: true,
         align: 'center',
         valign: 'middle',
@@ -118,8 +187,8 @@ export class PptxService {
     }
 
     // Subtitle
-    if (slideData.subtitle) {
-      slide.addText(slideData.subtitle, {
+    if (data.subtitle) {
+      slide.addText(data.subtitle, {
         x: 0.5,
         y: 4.2,
         w: 12.33,
@@ -132,52 +201,1100 @@ export class PptxService {
       });
     }
 
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
+    // Decorative line
+    slide.addShape(pres.ShapeType.rect, {
+      x: 5.5,
+      y: 4.0,
+      w: 2.33,
+      h: 0.05,
+      fill: { color: 'FFFFFF' },
+    });
+
+    if (data.notes) slide.addNotes(data.notes);
   }
 
   /**
-   * Add content slide with title and bullet points
+   * Add agenda/table of contents slide
    */
-  private addContentSlide(pres: pptxgen, slideData: PptxSlideData): void {
+  private addAgendaSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
-
-    // White background
-    slide.background = { color: this.THEME.background };
+    slide.background = { color: 'FFFFFF' };
 
     // Title
-    if (slideData.title) {
-      slide.addText(slideData.title, {
+    slide.addText(data.title || '학습 목차', {
+      x: 0.5,
+      y: 0.3,
+      w: 12.33,
+      h: 0.8,
+      fontSize: 32,
+      fontFace: this.FONTS.title,
+      color: theme.primary,
+      bold: true,
+    });
+
+    // Agenda items
+    if (data.items && data.items.length > 0) {
+      let yPos = 1.3;
+      data.items.forEach((item, index) => {
+        // Number circle
+        slide.addShape(pres.ShapeType.ellipse, {
+          x: 0.5,
+          y: yPos,
+          w: 0.6,
+          h: 0.6,
+          fill: { color: theme.primary },
+        });
+
+        slide.addText(item.number || String(index + 1).padStart(2, '0'), {
+          x: 0.5,
+          y: yPos,
+          w: 0.6,
+          h: 0.6,
+          fontSize: 14,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.white,
+          align: 'center',
+          valign: 'middle',
+          bold: true,
+        });
+
+        // Title
+        slide.addText(item.title, {
+          x: 1.3,
+          y: yPos,
+          w: 4,
+          h: 0.6,
+          fontSize: 18,
+          fontFace: this.FONTS.title,
+          color: this.TEXT.dark,
+          bold: true,
+          valign: 'middle',
+        });
+
+        // Description
+        slide.addText(item.description, {
+          x: 5.5,
+          y: yPos,
+          w: 7.3,
+          h: 0.6,
+          fontSize: 14,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.light,
+          valign: 'middle',
+        });
+
+        yPos += 0.9;
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add section divider slide
+   */
+  private addSectionSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: theme.primary };
+
+    // Section number
+    if (data.sectionNumber) {
+      slide.addText(data.sectionNumber, {
+        x: 0.5,
+        y: 2,
+        w: 12.33,
+        h: 0.8,
+        fontSize: 60,
+        fontFace: this.FONTS.title,
+        color: theme.secondary,
+        align: 'center',
+        bold: true,
+      });
+    }
+
+    // Section title
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 3,
+        w: 12.33,
+        h: 1.2,
+        fontSize: 40,
+        fontFace: this.FONTS.title,
+        color: this.TEXT.white,
+        bold: true,
+        align: 'center',
+        valign: 'middle',
+      });
+    }
+
+    // Subtitle
+    if (data.subtitle) {
+      slide.addText(data.subtitle, {
+        x: 0.5,
+        y: 4.3,
+        w: 12.33,
+        h: 0.8,
+        fontSize: 20,
+        fontFace: this.FONTS.body,
+        color: 'E0E7FF',
+        align: 'center',
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add definition slide - for explaining terms/concepts
+   */
+  private addDefinitionSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: theme.background };
+
+    // Term (large)
+    if (data.term) {
+      slide.addText(data.term, {
+        x: 0.5,
+        y: 0.3,
+        w: 12.33,
+        h: 0.9,
+        fontSize: 36,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    // Etymology if provided
+    if (data.etymology) {
+      slide.addText(`어원: ${data.etymology}`, {
+        x: 0.5,
+        y: 1.2,
+        w: 12.33,
+        h: 0.4,
+        fontSize: 12,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.light,
+        italic: true,
+      });
+    }
+
+    // Definition box
+    const defY = data.etymology ? 1.7 : 1.3;
+    slide.addShape(pres.ShapeType.rect, {
+      x: 0.5,
+      y: defY,
+      w: 12.33,
+      h: 1.4,
+      fill: { color: 'FFFFFF' },
+      shadow: { type: 'outer', blur: 3, offset: 2, angle: 45, opacity: 0.1 },
+    });
+
+    if (data.definition) {
+      slide.addText(data.definition, {
+        x: 0.7,
+        y: defY + 0.15,
+        w: 11.93,
+        h: 1.1,
+        fontSize: 16,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+        valign: 'middle',
+      });
+    }
+
+    // Examples
+    if (data.examples && data.examples.length > 0) {
+      slide.addText('예시', {
+        x: 0.5,
+        y: defY + 1.6,
+        w: 6,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+
+      const exampleBullets = data.examples.map(ex => ({
+        text: ex,
+        options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
+      }));
+
+      slide.addText(exampleBullets, {
+        x: 0.5,
+        y: defY + 2.0,
+        w: 6,
+        h: 2.5,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+        lineSpacing: 28,
+      });
+    }
+
+    // Related terms
+    if (data.relatedTerms && data.relatedTerms.length > 0) {
+      slide.addText('관련 용어', {
+        x: 7,
+        y: defY + 1.6,
+        w: 5.83,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+
+      slide.addText(data.relatedTerms.join('  •  '), {
+        x: 7,
+        y: defY + 2.0,
+        w: 5.83,
+        h: 1,
+        fontSize: 13,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.light,
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add concept explanation slide
+   */
+  private addConceptSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title with accent bar
+    slide.addShape(pres.ShapeType.rect, {
+      x: 0.5,
+      y: 0.3,
+      w: 0.15,
+      h: 0.7,
+      fill: { color: theme.primary },
+    });
+
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.8,
+        y: 0.3,
+        w: 11.93,
+        h: 0.7,
+        fontSize: 28,
+        fontFace: this.FONTS.title,
+        color: this.TEXT.dark,
+        bold: true,
+        valign: 'middle',
+      });
+    }
+
+    // Description
+    if (data.description) {
+      slide.addText(data.description, {
+        x: 0.5,
+        y: 1.2,
+        w: 12.33,
+        h: 1.2,
+        fontSize: 16,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+        valign: 'top',
+        lineSpacing: 26,
+      });
+    }
+
+    // Key points
+    if (data.keyPoints && data.keyPoints.length > 0) {
+      slide.addText('핵심 포인트', {
+        x: 0.5,
+        y: 2.6,
+        w: 12.33,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+
+      const keyPointBullets = data.keyPoints.map(kp => ({
+        text: kp,
+        options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
+      }));
+
+      slide.addText(keyPointBullets, {
+        x: 0.5,
+        y: 3.0,
+        w: 12.33,
+        h: 3,
+        fontSize: 15,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+        lineSpacing: 32,
+      });
+    }
+
+    // Insight box
+    if (data.insight) {
+      slide.addShape(pres.ShapeType.rect, {
+        x: 0.5,
+        y: 6.3,
+        w: 12.33,
+        h: 0.8,
+        fill: { color: theme.background },
+      });
+
+      slide.addText(`💡 ${data.insight}`, {
+        x: 0.7,
+        y: 6.4,
+        w: 11.93,
+        h: 0.6,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: theme.primary,
+        bold: true,
+        valign: 'middle',
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add process/steps slide
+   */
+  private addProcessSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 0.3,
+        w: 12.33,
+        h: 0.7,
+        fontSize: 28,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    // Description
+    if (data.description) {
+      slide.addText(data.description, {
+        x: 0.5,
+        y: 1.0,
+        w: 12.33,
+        h: 0.6,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.light,
+      });
+    }
+
+    // Process steps
+    if (data.steps && data.steps.length > 0) {
+      const stepCount = data.steps.length;
+      const startY = 1.8;
+      const stepHeight = Math.min(1.0, 4.5 / stepCount);
+
+      data.steps.forEach((step, index) => {
+        const yPos = startY + (index * stepHeight);
+
+        // Step number circle
+        slide.addShape(pres.ShapeType.ellipse, {
+          x: 0.5,
+          y: yPos,
+          w: 0.5,
+          h: 0.5,
+          fill: { color: theme.primary },
+        });
+
+        slide.addText(String(step.step || index + 1), {
+          x: 0.5,
+          y: yPos,
+          w: 0.5,
+          h: 0.5,
+          fontSize: 14,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.white,
+          align: 'center',
+          valign: 'middle',
+          bold: true,
+        });
+
+        // Connector line (except last)
+        if (index < stepCount - 1) {
+          slide.addShape(pres.ShapeType.rect, {
+            x: 0.725,
+            y: yPos + 0.5,
+            w: 0.05,
+            h: stepHeight - 0.5,
+            fill: { color: theme.secondary },
+          });
+        }
+
+        // Step title
+        slide.addText(step.title, {
+          x: 1.2,
+          y: yPos,
+          w: 3.5,
+          h: 0.5,
+          fontSize: 16,
+          fontFace: this.FONTS.title,
+          color: this.TEXT.dark,
+          bold: true,
+          valign: 'middle',
+        });
+
+        // Step description
+        slide.addText(step.description, {
+          x: 4.8,
+          y: yPos,
+          w: 8,
+          h: stepHeight - 0.1,
+          fontSize: 13,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.light,
+          valign: 'top',
+        });
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add comparison slide
+   */
+  private addComparisonSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 0.3,
+        w: 12.33,
+        h: 0.7,
+        fontSize: 28,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    // Description
+    if (data.description) {
+      slide.addText(data.description, {
+        x: 0.5,
+        y: 1.0,
+        w: 12.33,
+        h: 0.5,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.light,
+      });
+    }
+
+    // Table headers and rows
+    if (data.headers && data.rows) {
+      const tableRows: pptxgen.TableRow[] = [];
+
+      // Header row
+      tableRows.push(data.headers.map(h => ({
+        text: h,
+        options: {
+          fill: { color: theme.primary },
+          color: 'FFFFFF',
+          bold: true,
+          align: 'center' as const,
+          valign: 'middle' as const,
+        }
+      })));
+
+      // Data rows - handle both formats
+      data.rows.forEach((row, idx) => {
+        const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
+
+        if (Array.isArray(row)) {
+          // string[][] format
+          tableRows.push((row as string[]).map(cell => ({
+            text: cell,
+            options: {
+              fill: { color: bgColor },
+              color: this.TEXT.dark,
+              align: 'center' as const,
+              valign: 'middle' as const,
+            }
+          })));
+        } else {
+          // { aspect, itemA, itemB } format
+          const compRow = row as { aspect: string; itemA: string; itemB: string };
+          tableRows.push([
+            { text: compRow.aspect, options: { fill: { color: bgColor }, color: this.TEXT.dark, bold: true, align: 'left' as const, valign: 'middle' as const } },
+            { text: compRow.itemA, options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
+            { text: compRow.itemB, options: { fill: { color: bgColor }, color: this.TEXT.dark, align: 'center' as const, valign: 'middle' as const } },
+          ]);
+        }
+      });
+
+      slide.addTable(tableRows, {
+        x: 0.5,
+        y: 1.6,
+        w: 12.33,
+        colW: [4, 4.165, 4.165],
+        fontFace: this.FONTS.body,
+        fontSize: 13,
+        border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
+        rowH: 0.6,
+      });
+    }
+
+    // Conclusion
+    if (data.conclusion) {
+      slide.addShape(pres.ShapeType.rect, {
+        x: 0.5,
+        y: 6.3,
+        w: 12.33,
+        h: 0.8,
+        fill: { color: theme.background },
+      });
+
+      slide.addText(`결론: ${data.conclusion}`, {
+        x: 0.7,
+        y: 6.4,
+        w: 11.93,
+        h: 0.6,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: theme.primary,
+        bold: true,
+        valign: 'middle',
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add chart slide
+   */
+  private addChartSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 0.3,
+        w: 12.33,
+        h: 0.7,
+        fontSize: 28,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    // Chart
+    if (data.data && data.chartType) {
+      const chartData = [{
+        name: 'Data',
+        labels: data.data.labels,
+        values: data.data.values,
+      }];
+
+      const chartColors = data.data.colors || [theme.primary, theme.secondary, theme.accent, '94A3B8', 'CBD5E1'];
+
+      let chartType: pptxgen.CHART_NAME;
+      switch (data.chartType) {
+        case 'bar':
+          chartType = pres.ChartType.bar;
+          break;
+        case 'pie':
+          chartType = pres.ChartType.pie;
+          break;
+        case 'line':
+          chartType = pres.ChartType.line;
+          break;
+        case 'doughnut':
+          chartType = pres.ChartType.doughnut;
+          break;
+        default:
+          chartType = pres.ChartType.bar;
+      }
+
+      slide.addChart(chartType, chartData, {
+        x: 0.5,
+        y: 1.2,
+        w: 7.5,
+        h: 4.5,
+        chartColors: chartColors.map(c => c.replace('#', '')),
+        showLegend: true,
+        legendPos: 'b',
+        showValue: true,
+        dataLabelPosition: 'outEnd',
+      });
+    }
+
+    // Description & Insight
+    if (data.description) {
+      slide.addText(data.description, {
+        x: 8.5,
+        y: 1.2,
+        w: 4.33,
+        h: 2,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+      });
+    }
+
+    if (data.insight) {
+      slide.addShape(pres.ShapeType.rect, {
+        x: 8.5,
+        y: 3.5,
+        w: 4.33,
+        h: 1.2,
+        fill: { color: theme.background },
+      });
+
+      slide.addText(`💡 ${data.insight}`, {
+        x: 8.7,
+        y: 3.6,
+        w: 3.93,
+        h: 1,
+        fontSize: 13,
+        fontFace: this.FONTS.body,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add table slide
+   */
+  private addTableSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 0.3,
+        w: 12.33,
+        h: 0.7,
+        fontSize: 28,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+    }
+
+    // Description
+    if (data.description) {
+      slide.addText(data.description, {
+        x: 0.5,
+        y: 1.0,
+        w: 12.33,
+        h: 0.5,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.light,
+      });
+    }
+
+    // Table
+    if (data.headers && data.rows) {
+      const tableRows: pptxgen.TableRow[] = [];
+
+      // Header row
+      tableRows.push(data.headers.map(h => ({
+        text: h,
+        options: {
+          fill: { color: theme.primary },
+          color: 'FFFFFF',
+          bold: true,
+          align: 'center' as const,
+          valign: 'middle' as const,
+        }
+      })));
+
+      // Data rows
+      const rowsData = data.rows as string[][];
+      rowsData.forEach((row, idx) => {
+        const bgColor = idx % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
+        tableRows.push(row.map((cell, cellIdx) => ({
+          text: cell,
+          options: {
+            fill: { color: bgColor },
+            color: this.TEXT.dark,
+            align: cellIdx === 0 ? 'left' as const : 'center' as const,
+            valign: 'middle' as const,
+          }
+        })));
+      });
+
+      const colCount = data.headers.length;
+      const colW = 12.33 / colCount;
+
+      slide.addTable(tableRows, {
+        x: 0.5,
+        y: 1.6,
+        w: 12.33,
+        colW: Array(colCount).fill(colW),
+        fontFace: this.FONTS.body,
+        fontSize: 12,
+        border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
+        rowH: 0.5,
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add case study slide
+   */
+  private addCaseStudySlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // Title with case study badge
+    slide.addShape(pres.ShapeType.rect, {
+      x: 0.5,
+      y: 0.3,
+      w: 1.5,
+      h: 0.4,
+      fill: { color: theme.primary },
+    });
+
+    slide.addText('CASE STUDY', {
+      x: 0.5,
+      y: 0.3,
+      w: 1.5,
+      h: 0.4,
+      fontSize: 10,
+      fontFace: this.FONTS.body,
+      color: this.TEXT.white,
+      align: 'center',
+      valign: 'middle',
+      bold: true,
+    });
+
+    if (data.title) {
+      slide.addText(data.title, {
+        x: 0.5,
+        y: 0.8,
+        w: 12.33,
+        h: 0.6,
+        fontSize: 24,
+        fontFace: this.FONTS.title,
+        color: this.TEXT.dark,
+        bold: true,
+      });
+    }
+
+    // Context, Challenge, Solution, Result - 2x2 grid
+    const sections = [
+      { label: '배경', content: data.context, x: 0.5, y: 1.6 },
+      { label: '과제', content: data.challenge, x: 6.7, y: 1.6 },
+      { label: '해결방안', content: data.solution, x: 0.5, y: 3.8 },
+      { label: '결과', content: data.result, x: 6.7, y: 3.8 },
+    ];
+
+    sections.forEach(sec => {
+      if (sec.content) {
+        slide.addText(sec.label, {
+          x: sec.x,
+          y: sec.y,
+          w: 6,
+          h: 0.4,
+          fontSize: 12,
+          fontFace: this.FONTS.title,
+          color: theme.primary,
+          bold: true,
+        });
+
+        slide.addText(sec.content, {
+          x: sec.x,
+          y: sec.y + 0.4,
+          w: 6,
+          h: 1.6,
+          fontSize: 13,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.dark,
+          valign: 'top',
+        });
+      }
+    });
+
+    // Lessons learned
+    if (data.lessons && data.lessons.length > 0) {
+      slide.addText('📚 교훈', {
+        x: 0.5,
+        y: 6.0,
+        w: 2,
+        h: 0.4,
+        fontSize: 12,
+        fontFace: this.FONTS.title,
+        color: theme.primary,
+        bold: true,
+      });
+
+      slide.addText(data.lessons.join('  |  '), {
+        x: 2.5,
+        y: 6.0,
+        w: 10.33,
+        h: 0.4,
+        fontSize: 12,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.dark,
+        valign: 'middle',
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add key points slide
+   */
+  private addKeyPointsSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: theme.background };
+
+    // Title with icon
+    const icon = data.icon || '💡';
+    slide.addText(`${icon} ${data.title || '핵심 정리'}`, {
+      x: 0.5,
+      y: 0.3,
+      w: 12.33,
+      h: 0.8,
+      fontSize: 28,
+      fontFace: this.FONTS.title,
+      color: theme.primary,
+      bold: true,
+    });
+
+    // Key points as cards
+    if (data.points && data.points.length > 0) {
+      const cols = Math.min(data.points.length, 3);
+      const cardWidth = (12.33 - (cols - 1) * 0.3) / cols;
+      let row = 0;
+      let col = 0;
+
+      data.points.forEach((point, index) => {
+        const x = 0.5 + col * (cardWidth + 0.3);
+        const y = 1.4 + row * 2.2;
+
+        // Card background
+        slide.addShape(pres.ShapeType.rect, {
+          x: x,
+          y: y,
+          w: cardWidth,
+          h: 2,
+          fill: { color: 'FFFFFF' },
+          shadow: { type: 'outer', blur: 3, offset: 2, angle: 45, opacity: 0.1 },
+        });
+
+        // Point number
+        slide.addShape(pres.ShapeType.ellipse, {
+          x: x + 0.15,
+          y: y + 0.15,
+          w: 0.4,
+          h: 0.4,
+          fill: { color: theme.primary },
+        });
+
+        slide.addText(String(index + 1), {
+          x: x + 0.15,
+          y: y + 0.15,
+          w: 0.4,
+          h: 0.4,
+          fontSize: 14,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.white,
+          align: 'center',
+          valign: 'middle',
+          bold: true,
+        });
+
+        // Point title
+        slide.addText(point.title, {
+          x: x + 0.65,
+          y: y + 0.15,
+          w: cardWidth - 0.8,
+          h: 0.4,
+          fontSize: 14,
+          fontFace: this.FONTS.title,
+          color: this.TEXT.dark,
+          bold: true,
+          valign: 'middle',
+        });
+
+        // Point description
+        slide.addText(point.description, {
+          x: x + 0.15,
+          y: y + 0.65,
+          w: cardWidth - 0.3,
+          h: 1.2,
+          fontSize: 12,
+          fontFace: this.FONTS.body,
+          color: this.TEXT.light,
+          valign: 'top',
+        });
+
+        col++;
+        if (col >= cols) {
+          col = 0;
+          row++;
+        }
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  /**
+   * Add summary/conclusion slide
+   */
+  private addSummarySlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: theme.primary };
+
+    // Title
+    slide.addText(data.title || '학습 요약', {
+      x: 0.5,
+      y: 0.3,
+      w: 12.33,
+      h: 0.8,
+      fontSize: 32,
+      fontFace: this.FONTS.title,
+      color: this.TEXT.white,
+      bold: true,
+    });
+
+    // Key takeaways
+    if (data.keyTakeaways && data.keyTakeaways.length > 0) {
+      slide.addText('핵심 내용', {
+        x: 0.5,
+        y: 1.3,
+        w: 6,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: this.FONTS.title,
+        color: 'E0E7FF',
+        bold: true,
+      });
+
+      const takeawayBullets = data.keyTakeaways.map(t => ({
+        text: t,
+        options: { bullet: { type: 'bullet' as const, color: 'FFFFFF' }, indentLevel: 0 },
+      }));
+
+      slide.addText(takeawayBullets, {
+        x: 0.5,
+        y: 1.7,
+        w: 6,
+        h: 3.5,
+        fontSize: 15,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.white,
+        lineSpacing: 32,
+      });
+    }
+
+    // Next steps
+    if (data.nextSteps && data.nextSteps.length > 0) {
+      slide.addText('다음 학습', {
+        x: 7,
+        y: 1.3,
+        w: 5.83,
+        h: 0.4,
+        fontSize: 14,
+        fontFace: this.FONTS.title,
+        color: 'E0E7FF',
+        bold: true,
+      });
+
+      const nextBullets = data.nextSteps.map(n => ({
+        text: n,
+        options: { bullet: { type: 'bullet' as const, color: 'FFFFFF' }, indentLevel: 0 },
+      }));
+
+      slide.addText(nextBullets, {
+        x: 7,
+        y: 1.7,
+        w: 5.83,
+        h: 2,
+        fontSize: 14,
+        fontFace: this.FONTS.body,
+        color: this.TEXT.white,
+        lineSpacing: 28,
+      });
+    }
+
+    // References
+    if (data.references && data.references.length > 0) {
+      slide.addText('참고 자료: ' + data.references.join(', '), {
+        x: 0.5,
+        y: 6.5,
+        w: 12.33,
+        h: 0.5,
+        fontSize: 11,
+        fontFace: this.FONTS.body,
+        color: 'A5B4FC',
+      });
+    }
+
+    if (data.notes) slide.addNotes(data.notes);
+  }
+
+  // ============================================
+  // Legacy slide types for backward compatibility
+  // ============================================
+
+  private addContentSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    if (data.title) {
+      slide.addText(data.title, {
         x: 0.5,
         y: 0.3,
         w: 12.33,
         h: 0.8,
-        fontSize: 32,
+        fontSize: 28,
         fontFace: this.FONTS.title,
-        color: this.THEME.primary,
+        color: theme.primary,
         bold: true,
       });
 
-      // Title underline
       slide.addShape(pres.ShapeType.rect, {
         x: 0.5,
         y: 1.1,
         w: 2,
         h: 0.05,
-        fill: { color: this.THEME.primary },
+        fill: { color: theme.primary },
       });
     }
 
-    // Bullet points
-    if (slideData.bullets && slideData.bullets.length > 0) {
-      const bulletText = slideData.bullets.map(bullet => ({
+    if (data.bullets && data.bullets.length > 0) {
+      const bulletText = data.bullets.map(bullet => ({
         text: bullet,
-        options: {
-          bullet: { type: 'bullet' as const, color: this.THEME.primary },
-          indentLevel: 0,
-        },
+        options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
       }));
 
       slide.addText(bulletText, {
@@ -185,74 +1302,50 @@ export class PptxService {
         y: 1.5,
         w: 12.33,
         h: 5.5,
-        fontSize: 20,
+        fontSize: 18,
         fontFace: this.FONTS.body,
-        color: this.THEME.text,
+        color: this.TEXT.dark,
         valign: 'top',
         lineSpacing: 36,
       });
     }
 
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
+    if (data.notes) slide.addNotes(data.notes);
   }
 
-  /**
-   * Add two-column comparison slide
-   */
-  private addTwoColumnSlide(pres: pptxgen, slideData: PptxSlideData): void {
+  private addTwoColumnSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
 
-    // White background
-    slide.background = { color: this.THEME.background };
-
-    // Title
-    if (slideData.title) {
-      slide.addText(slideData.title, {
+    if (data.title) {
+      slide.addText(data.title, {
         x: 0.5,
         y: 0.3,
         w: 12.33,
         h: 0.8,
-        fontSize: 32,
+        fontSize: 28,
         fontFace: this.FONTS.title,
-        color: this.THEME.primary,
+        color: theme.primary,
         bold: true,
-      });
-
-      // Title underline
-      slide.addShape(pres.ShapeType.rect, {
-        x: 0.5,
-        y: 1.1,
-        w: 2,
-        h: 0.05,
-        fill: { color: this.THEME.primary },
       });
     }
 
-    // Left column
-    if (slideData.leftColumn) {
-      // Left header
-      slide.addText(slideData.leftColumn.header, {
+    if (data.leftColumn) {
+      slide.addText(data.leftColumn.header, {
         x: 0.5,
         y: 1.5,
         w: 5.9,
         h: 0.6,
-        fontSize: 22,
+        fontSize: 20,
         fontFace: this.FONTS.title,
-        color: this.THEME.primary,
+        color: theme.primary,
         bold: true,
       });
 
-      // Left items
-      if (slideData.leftColumn.items && slideData.leftColumn.items.length > 0) {
-        const leftBullets = slideData.leftColumn.items.map(item => ({
+      if (data.leftColumn.items && data.leftColumn.items.length > 0) {
+        const leftBullets = data.leftColumn.items.map(item => ({
           text: item,
-          options: {
-            bullet: { type: 'bullet' as const, color: this.THEME.primary },
-            indentLevel: 0,
-          },
+          options: { bullet: { type: 'bullet' as const, color: theme.primary }, indentLevel: 0 },
         }));
 
         slide.addText(leftBullets, {
@@ -260,37 +1353,31 @@ export class PptxService {
           y: 2.2,
           w: 5.9,
           h: 4.8,
-          fontSize: 18,
+          fontSize: 16,
           fontFace: this.FONTS.body,
-          color: this.THEME.text,
+          color: this.TEXT.dark,
           valign: 'top',
-          lineSpacing: 32,
+          lineSpacing: 30,
         });
       }
     }
 
-    // Right column
-    if (slideData.rightColumn) {
-      // Right header
-      slide.addText(slideData.rightColumn.header, {
+    if (data.rightColumn) {
+      slide.addText(data.rightColumn.header, {
         x: 6.9,
         y: 1.5,
         w: 5.9,
         h: 0.6,
-        fontSize: 22,
+        fontSize: 20,
         fontFace: this.FONTS.title,
-        color: this.THEME.secondary,
+        color: theme.secondary,
         bold: true,
       });
 
-      // Right items
-      if (slideData.rightColumn.items && slideData.rightColumn.items.length > 0) {
-        const rightBullets = slideData.rightColumn.items.map(item => ({
+      if (data.rightColumn.items && data.rightColumn.items.length > 0) {
+        const rightBullets = data.rightColumn.items.map(item => ({
           text: item,
-          options: {
-            bullet: { type: 'bullet' as const, color: this.THEME.secondary },
-            indentLevel: 0,
-          },
+          options: { bullet: { type: 'bullet' as const, color: theme.secondary }, indentLevel: 0 },
         }));
 
         slide.addText(rightBullets, {
@@ -298,16 +1385,16 @@ export class PptxService {
           y: 2.2,
           w: 5.9,
           h: 4.8,
-          fontSize: 18,
+          fontSize: 16,
           fontFace: this.FONTS.body,
-          color: this.THEME.text,
+          color: this.TEXT.dark,
           valign: 'top',
-          lineSpacing: 32,
+          lineSpacing: 30,
         });
       }
     }
 
-    // Center divider line
+    // Divider
     slide.addShape(pres.ShapeType.line, {
       x: 6.6,
       y: 1.5,
@@ -316,130 +1403,13 @@ export class PptxService {
       line: { color: 'E5E7EB', width: 1 },
     });
 
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
+    if (data.notes) slide.addNotes(data.notes);
   }
 
-  /**
-   * Add section divider slide
-   */
-  private addSectionSlide(pres: pptxgen, slideData: PptxSlideData): void {
+  private addQuoteSlide(pres: pptxgen, data: PptxSlideData, theme: SectionColors): void {
     const slide = pres.addSlide();
+    slide.background = { color: theme.background };
 
-    // Gradient-like background (using secondary color)
-    slide.background = { color: this.THEME.secondary };
-
-    // Section title
-    if (slideData.title) {
-      slide.addText(slideData.title, {
-        x: 0.5,
-        y: 3,
-        w: 12.33,
-        h: 1.5,
-        fontSize: 40,
-        fontFace: this.FONTS.title,
-        color: 'FFFFFF',
-        bold: true,
-        align: 'center',
-        valign: 'middle',
-      });
-    }
-
-    // Subtitle (if provided)
-    if (slideData.subtitle) {
-      slide.addText(slideData.subtitle, {
-        x: 0.5,
-        y: 4.5,
-        w: 12.33,
-        h: 0.8,
-        fontSize: 20,
-        fontFace: this.FONTS.body,
-        color: 'E9D5FF',
-        align: 'center',
-        valign: 'middle',
-      });
-    }
-
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
-  }
-
-  /**
-   * Add image slide
-   */
-  private addImageSlide(pres: pptxgen, slideData: PptxSlideData): void {
-    const slide = pres.addSlide();
-
-    // White background
-    slide.background = { color: this.THEME.background };
-
-    // Title
-    if (slideData.title) {
-      slide.addText(slideData.title, {
-        x: 0.5,
-        y: 0.3,
-        w: 12.33,
-        h: 0.8,
-        fontSize: 28,
-        fontFace: this.FONTS.title,
-        color: this.THEME.primary,
-        bold: true,
-        align: 'center',
-      });
-    }
-
-    // Image placeholder (since we can't embed external URLs directly in most cases)
-    if (slideData.imageUrl) {
-      // Add a placeholder with the URL as text
-      slide.addText(`[Image: ${slideData.imageUrl}]`, {
-        x: 1,
-        y: 1.5,
-        w: 11.33,
-        h: 4.5,
-        fontSize: 14,
-        fontFace: this.FONTS.body,
-        color: this.THEME.textLight,
-        align: 'center',
-        valign: 'middle',
-        fill: { color: 'F3F4F6' },
-      });
-    }
-
-    // Caption
-    if (slideData.caption) {
-      slide.addText(slideData.caption, {
-        x: 0.5,
-        y: 6.2,
-        w: 12.33,
-        h: 0.6,
-        fontSize: 16,
-        fontFace: this.FONTS.body,
-        color: this.THEME.textLight,
-        align: 'center',
-        italic: true,
-      });
-    }
-
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
-  }
-
-  /**
-   * Add quote slide
-   */
-  private addQuoteSlide(pres: pptxgen, slideData: PptxSlideData): void {
-    const slide = pres.addSlide();
-
-    // Light background
-    slide.background = { color: 'F9FAFB' };
-
-    // Large quotation mark
     slide.addText('"', {
       x: 0.5,
       y: 1,
@@ -447,61 +1417,55 @@ export class PptxService {
       h: 1.5,
       fontSize: 120,
       fontFace: 'Georgia',
-      color: this.THEME.primary,
+      color: theme.primary,
       bold: true,
     });
 
-    // Quote text
-    if (slideData.quote) {
-      slide.addText(slideData.quote, {
+    if (data.quote) {
+      slide.addText(data.quote, {
         x: 1.5,
         y: 2.5,
         w: 10.33,
         h: 3,
-        fontSize: 28,
+        fontSize: 26,
         fontFace: 'Georgia',
-        color: this.THEME.text,
+        color: this.TEXT.dark,
         italic: true,
         align: 'center',
         valign: 'middle',
       });
     }
 
-    // Author
-    if (slideData.author) {
-      slide.addText(`— ${slideData.author}`, {
+    if (data.author) {
+      slide.addText(`— ${data.author}`, {
         x: 0.5,
         y: 5.8,
         w: 12.33,
         h: 0.6,
-        fontSize: 20,
+        fontSize: 18,
         fontFace: this.FONTS.body,
-        color: this.THEME.primary,
+        color: theme.primary,
         align: 'center',
         bold: true,
       });
     }
 
-    // Add speaker notes
-    if (slideData.notes) {
-      slide.addNotes(slideData.notes);
-    }
+    if (data.notes) slide.addNotes(data.notes);
   }
 
   /**
    * Parse JSON response from AI and extract presentation data
    */
   parseJsonResponse(response: string): PptxPresentationData {
-    // Remove markdown code blocks if present
     let jsonString = response.trim();
 
-    // Handle ```json ... ``` format
+    // Remove markdown code blocks if present
     const jsonBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
     if (jsonBlockMatch) {
       jsonString = jsonBlockMatch[1].trim();
     }
 
-    // Try to find JSON object boundaries
+    // Find JSON object boundaries
     const firstBrace = jsonString.indexOf('{');
     const lastBrace = jsonString.lastIndexOf('}');
 
@@ -512,7 +1476,6 @@ export class PptxService {
     try {
       const data = JSON.parse(jsonString) as PptxPresentationData;
 
-      // Validate required fields
       if (!data.title) {
         data.title = 'Untitled Presentation';
       }
@@ -521,10 +1484,14 @@ export class PptxService {
         throw new Error('Invalid presentation data: slides array is required');
       }
 
-      // Validate each slide has a type
+      // Validate/normalize each slide
       for (let i = 0; i < data.slides.length; i++) {
         if (!data.slides[i].type) {
           data.slides[i].type = 'content';
+        }
+        // Set default section if not provided
+        if (!data.slides[i].section) {
+          data.slides[i].section = 'concepts';
         }
       }
 
