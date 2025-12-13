@@ -4,7 +4,8 @@ import {
   SlideGenerationResult,
   GenerationError,
   GenerationErrorClass,
-  PROVIDER_CONFIGS
+  PROVIDER_CONFIGS,
+  PptxPresentationData
 } from '../types';
 
 export class SlideService {
@@ -46,6 +47,99 @@ export class SlideService {
         throw error;
       }
       throw this.handleApiError(error, provider);
+    }
+  }
+
+  /**
+   * Generate PPTX slide data (JSON) from content using the specified AI provider
+   */
+  async generatePptxSlideData(
+    content: string,
+    provider: AIProvider,
+    model: string,
+    apiKey: string,
+    systemPrompt: string
+  ): Promise<PptxPresentationData> {
+    if (!apiKey) {
+      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+    }
+
+    if (!content.trim()) {
+      throw this.createError('NO_CONTENT', 'Content is empty');
+    }
+
+    try {
+      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt);
+
+      // Extract JSON from response
+      const presentationData = this.extractJsonFromResponse(response);
+
+      return presentationData;
+    } catch (error) {
+      if (error instanceof GenerationErrorClass) {
+        throw error;
+      }
+      throw this.handleApiError(error, provider);
+    }
+  }
+
+  /**
+   * Call provider for PPTX JSON generation
+   */
+  private async callProviderForPptx(
+    provider: AIProvider,
+    model: string,
+    apiKey: string,
+    content: string,
+    systemPrompt: string
+  ): Promise<string> {
+    const userMessage = `다음 콘텐츠를 분석하여 PowerPoint 프레젠테이션용 JSON 데이터를 생성해주세요:\n\n${content}`;
+    return this.callProvider(provider, model, apiKey, userMessage, systemPrompt);
+  }
+
+  /**
+   * Extract and parse JSON presentation data from AI response
+   */
+  private extractJsonFromResponse(response: string): PptxPresentationData {
+    let jsonString = response.trim();
+
+    // Remove markdown code blocks if present
+    const jsonBlockMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (jsonBlockMatch) {
+      jsonString = jsonBlockMatch[1].trim();
+    }
+
+    // Try to find JSON object boundaries
+    const firstBrace = jsonString.indexOf('{');
+    const lastBrace = jsonString.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+    }
+
+    try {
+      const data = JSON.parse(jsonString) as PptxPresentationData;
+
+      // Validate required fields
+      if (!data.title) {
+        data.title = 'Untitled Presentation';
+      }
+
+      if (!data.slides || !Array.isArray(data.slides)) {
+        throw new Error('Invalid presentation data: slides array is required');
+      }
+
+      // Validate each slide has a type
+      for (let i = 0; i < data.slides.length; i++) {
+        if (!data.slides[i].type) {
+          data.slides[i].type = 'content';
+        }
+      }
+
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw this.createError('GENERATION_FAILED', `Failed to parse PPTX JSON data: ${message}`);
     }
   }
 

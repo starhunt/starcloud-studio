@@ -1,10 +1,11 @@
 import { App, Modal, Setting } from 'obsidian';
-import { SlideInputSource, SlidePromptType, SlidePromptConfig, SlideOptionsResult, PreferredLanguage } from '../types';
-import { BUILTIN_SLIDE_PROMPTS } from '../settingsData';
+import { SlideInputSource, SlidePromptType, SlidePromptConfig, SlideOptionsResult, PreferredLanguage, SlideOutputFormat } from '../types';
+import { BUILTIN_SLIDE_PROMPTS, PPTX_SYSTEM_PROMPT } from '../settingsData';
 
 export class SlideOptionsModal extends Modal {
   private selectedInputSource: SlideInputSource = 'note';
   private selectedPromptType: SlidePromptType | string;
+  private selectedOutputFormat: SlideOutputFormat = 'html';
   private customText: string = '';
   private customSlidePrompts: SlidePromptConfig[];
   private onSubmit: (result: SlideOptionsResult) => void;
@@ -19,13 +20,15 @@ export class SlideOptionsModal extends Modal {
     defaultPromptType: SlidePromptType,
     customSlidePrompts: SlidePromptConfig[],
     onSubmit: (result: SlideOptionsResult) => void,
-    language: PreferredLanguage = 'ko'
+    language: PreferredLanguage = 'ko',
+    defaultOutputFormat: SlideOutputFormat = 'html'
   ) {
     super(app);
     this.selectedPromptType = defaultPromptType;
     this.customSlidePrompts = customSlidePrompts;
     this.onSubmit = onSubmit;
     this.language = language;
+    this.selectedOutputFormat = defaultOutputFormat;
   }
 
   onOpen() {
@@ -63,6 +66,23 @@ export class SlideOptionsModal extends Modal {
     // Custom Text Container (hidden by default)
     this.customTextContainer = contentEl.createDiv({ cls: 'nanobanana-custom-text-container' });
     this.updateCustomTextVisibility();
+
+    // Output Format Selection
+    new Setting(contentEl)
+      .setName(this.getMessage('outputFormatLabel'))
+      .setDesc(this.getMessage('outputFormatDesc'))
+      .addDropdown(dropdown => dropdown
+        .addOptions({
+          'html': 'HTML (Interactive)',
+          'pptx': 'PowerPoint (PPTX)'
+        })
+        .setValue(this.selectedOutputFormat)
+        .onChange((value: SlideOutputFormat) => {
+          this.selectedOutputFormat = value;
+          this.isPromptEdited = false;
+          this.updatePromptPreview();
+        })
+      );
 
     // Prompt Type Selection
     new Setting(contentEl)
@@ -109,7 +129,8 @@ export class SlideOptionsModal extends Modal {
         inputSource: this.selectedInputSource,
         customText: this.customText,
         promptType: this.selectedPromptType,
-        selectedPromptConfig: this.getSelectedPromptConfig()
+        selectedPromptConfig: this.getSelectedPromptConfig(),
+        outputFormat: this.selectedOutputFormat
       });
       this.close();
     };
@@ -125,7 +146,8 @@ export class SlideOptionsModal extends Modal {
         inputSource: this.selectedInputSource,
         customText: this.customText,
         promptType: this.selectedPromptType,
-        selectedPromptConfig: this.getSelectedPromptConfig()
+        selectedPromptConfig: this.getSelectedPromptConfig(),
+        outputFormat: this.selectedOutputFormat
       });
       this.close();
     };
@@ -229,6 +251,17 @@ export class SlideOptionsModal extends Modal {
   }
 
   private getBasePromptConfig(): SlidePromptConfig {
+    // If PPTX format is selected, return PPTX system prompt
+    if (this.selectedOutputFormat === 'pptx') {
+      return {
+        id: 'pptx-presentation',
+        name: 'PPTX Presentation',
+        description: 'Generate structured JSON for PowerPoint slides',
+        prompt: PPTX_SYSTEM_PROMPT,
+        isBuiltIn: true
+      };
+    }
+
     // First check built-in prompts
     if (this.selectedPromptType in BUILTIN_SLIDE_PROMPTS) {
       return BUILTIN_SLIDE_PROMPTS[this.selectedPromptType as SlidePromptType];
@@ -265,6 +298,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: '슬라이드로 변환할 텍스트',
         customTextPlaceholder: '슬라이드로 변환할 텍스트를 입력하세요...',
+        outputFormatLabel: '출력 형식',
+        outputFormatDesc: 'HTML 또는 PowerPoint 형식을 선택하세요',
         promptTypeLabel: '시스템 프롬프트',
         promptTypeDesc: '슬라이드 생성에 사용할 지침을 선택하세요',
         viewSystemPrompt: '시스템 프롬프트 보기/편집',
@@ -282,6 +317,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: 'Text to convert to slide',
         customTextPlaceholder: 'Enter text to convert to slide...',
+        outputFormatLabel: 'Output format',
+        outputFormatDesc: 'Choose between HTML or PowerPoint format',
         promptTypeLabel: 'System prompt',
         promptTypeDesc: 'Select the instruction type for slide generation',
         viewSystemPrompt: 'View/Edit System Prompt',
@@ -299,6 +336,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: 'スライドに変換するテキスト',
         customTextPlaceholder: 'スライドに変換するテキストを入力...',
+        outputFormatLabel: '出力形式',
+        outputFormatDesc: 'HTMLまたはPowerPoint形式を選択',
         promptTypeLabel: 'システムプロンプト',
         promptTypeDesc: 'スライド生成に使用する指示を選択',
         viewSystemPrompt: 'システムプロンプトを表示/編集',
@@ -316,6 +355,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: '要转换为幻灯片的文本',
         customTextPlaceholder: '输入要转换为幻灯片的文本...',
+        outputFormatLabel: '输出格式',
+        outputFormatDesc: '选择HTML或PowerPoint格式',
         promptTypeLabel: '系统提示',
         promptTypeDesc: '选择幻灯片生成使用的指令',
         viewSystemPrompt: '查看/编辑系统提示',
@@ -333,6 +374,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: 'Texto para convertir',
         customTextPlaceholder: 'Ingrese el texto...',
+        outputFormatLabel: 'Formato de salida',
+        outputFormatDesc: 'Elija entre formato HTML o PowerPoint',
         promptTypeLabel: 'Prompt del sistema',
         promptTypeDesc: 'Seleccione el tipo de instruccion',
         viewSystemPrompt: 'Ver/Editar prompt',
@@ -350,6 +393,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: 'Texte a convertir',
         customTextPlaceholder: 'Entrez le texte...',
+        outputFormatLabel: 'Format de sortie',
+        outputFormatDesc: 'Choisissez entre le format HTML ou PowerPoint',
         promptTypeLabel: 'Prompt systeme',
         promptTypeDesc: 'Selectionnez le type instruction',
         viewSystemPrompt: 'Voir/Modifier prompt',
@@ -367,6 +412,8 @@ export class SlideOptionsModal extends Modal {
         inputSourceCustom: 'Custom text',
         customTextLabel: 'Zu konvertierender Text',
         customTextPlaceholder: 'Text eingeben...',
+        outputFormatLabel: 'Ausgabeformat',
+        outputFormatDesc: 'Wahlen Sie zwischen HTML oder PowerPoint',
         promptTypeLabel: 'System-Prompt',
         promptTypeDesc: 'Wahlen Sie den Anweisungstyp',
         viewSystemPrompt: 'Prompt anzeigen/bearbeiten',

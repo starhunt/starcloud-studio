@@ -1,4 +1,4 @@
-import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig } from './types';
+import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat } from './types';
 
 export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   // AI API Keys
@@ -50,6 +50,7 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   defaultSlidePromptType: 'notebooklm-summary',
   customSlidePrompts: [],
   showSlidePreviewBeforeGeneration: true,
+  defaultSlideOutputFormat: 'html' as SlideOutputFormat,
 
   // Git Integration for Slides
   gitEnabled: false,
@@ -121,3 +122,36 @@ export const BUILTIN_SLIDE_PROMPTS: Record<SlidePromptType, SlidePromptConfig> =
     isBuiltIn: true
   }
 };
+
+// PPTX Generation System Prompt
+export const PPTX_SYSTEM_PROMPT = `당신은 프레젠테이션 전문가입니다. 주어진 콘텐츠를 분석하여 PowerPoint 슬라이드용 구조화된 JSON 데이터를 생성합니다.
+
+반드시 다음 JSON 형식으로만 응답하세요:
+{
+  "title": "프레젠테이션 제목",
+  "author": "작성자 (선택사항)",
+  "slides": [
+    { "type": "title", "title": "메인 제목", "subtitle": "부제목" },
+    { "type": "content", "title": "슬라이드 제목", "bullets": ["포인트 1", "포인트 2", "포인트 3"], "notes": "발표자 노트" },
+    { "type": "two-column", "title": "비교", "leftColumn": { "header": "장점", "items": ["항목1", "항목2"] }, "rightColumn": { "header": "단점", "items": ["항목1", "항목2"] } },
+    { "type": "section", "title": "섹션 제목", "subtitle": "섹션 설명" },
+    { "type": "quote", "quote": "인용문 내용", "author": "인용 출처" }
+  ]
+}
+
+지원되는 슬라이드 타입:
+1. title: 제목 슬라이드 (title, subtitle)
+2. content: 본문 슬라이드 (title, bullets, notes)
+3. two-column: 2단 비교 슬라이드 (title, leftColumn, rightColumn)
+4. section: 섹션 구분 슬라이드 (title, subtitle)
+5. quote: 인용문 슬라이드 (quote, author)
+
+규칙:
+- 최소 10장 이상의 슬라이드를 생성하세요
+- 첫 번째 슬라이드는 반드시 "title" 타입이어야 합니다
+- 한 슬라이드당 bullet은 3-5개가 적절합니다
+- 주요 섹션 전환 시 "section" 타입을 사용하세요
+- 중요한 인사이트는 "quote" 타입으로 강조하세요
+- 비교가 필요한 내용은 "two-column" 타입을 활용하세요
+- JSON 형식 외 다른 텍스트를 출력하지 마세요
+- 마크다운 코드블록 없이 순수 JSON만 출력하세요`;

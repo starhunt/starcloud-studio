@@ -261,6 +261,7 @@ export interface NanoBananaCloudSettings {
   defaultSlidePromptType: SlidePromptType;
   customSlidePrompts: SlidePromptConfig[];
   showSlidePreviewBeforeGeneration: boolean;
+  defaultSlideOutputFormat: SlideOutputFormat;
 
   // Git Integration for Slides
   gitEnabled: boolean;
@@ -492,4 +493,40 @@ export interface SlideOptionsResult {
   customText: string;
   promptType: SlidePromptType | string;
   selectedPromptConfig: SlidePromptConfig;
+  outputFormat: SlideOutputFormat;
+}
+
+// ============================================================
+// PPTX Generation Types
+// ============================================================
+
+export type SlideOutputFormat = 'html' | 'pptx';
+
+export type PptxSlideType = 'title' | 'content' | 'two-column' | 'section' | 'image' | 'quote';
+
+export interface PptxSlideData {
+  type: PptxSlideType;
+  title?: string;
+  subtitle?: string;
+  bullets?: string[];
+  leftColumn?: { header: string; items: string[] };
+  rightColumn?: { header: string; items: string[] };
+  imageUrl?: string;
+  caption?: string;
+  notes?: string;
+  quote?: string;
+  author?: string;
+}
+
+export interface PptxPresentationData {
+  title: string;
+  author?: string;
+  subject?: string;
+  slides: PptxSlideData[];
+}
+
+export interface PptxGenerationResult {
+  pptxBuffer: ArrayBuffer;
+  title: string;
+  slideCount: number;
 }

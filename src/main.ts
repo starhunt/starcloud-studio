@@ -7,13 +7,15 @@ import {
   OAuthTokens,
   InputSource,
   EmbedPosition,
-  GenerationErrorClass
+  GenerationErrorClass,
+  DriveUploadResult
 } from './types';
 import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
 import { NanoBananaCloudSettingTab } from './settings';
 import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
 import { SlideService } from './services/slideService';
+import { PptxService } from './services/pptxService';
 import { FileService } from './services/fileService';
 import { GitService } from './services/gitService';
 import { GoogleOAuthFlow } from './services/googleOAuthFlow';
@@ -32,6 +34,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
   private promptService: PromptService;
   private imageService: ImageService;
   private slideService: SlideService;
+  private pptxService: PptxService;
   private fileService: FileService;
   private driveUploadService: DriveUploadService | null = null;
   private embedService: EmbedService;
@@ -46,6 +49,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
     this.promptService = new PromptService();
     this.imageService = new ImageService();
     this.slideService = new SlideService();
+    this.pptxService = new PptxService();
     this.fileService = new FileService(this.app);
     this.embedService = new EmbedService(this.app);
 
@@ -603,7 +607,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
   }
 
   /**
-   * Generate interactive HTML slide
+   * Generate interactive HTML slide or PPTX presentation
    */
   private async generateSlide(editor: Editor, view: MarkdownView) {
     if (this.isGenerating) {
@@ -630,6 +634,22 @@ export default class NanoBananaCloudPlugin extends Plugin {
       return;
     }
 
+    // Branch based on output format
+    if (options.outputFormat === 'pptx') {
+      await this.generatePptxSlide(editor, view, options);
+    } else {
+      await this.generateHtmlSlide(editor, view, options);
+    }
+  }
+
+  /**
+   * Generate HTML slide
+   */
+  private async generateHtmlSlide(editor: Editor, view: MarkdownView, options: SlideOptionsResult) {
+    const noteFile = view.file;
+    if (!noteFile) return;
+
+    const apiKey = this.getApiKeyForProvider();
     this.isGenerating = true;
     let progressModal: ProgressModal | null = null;
 
@@ -757,6 +777,165 @@ export default class NanoBananaCloudPlugin extends Plugin {
     }
   }
 
+  /**
+   * Generate PPTX presentation and upload to Google Drive
+   */
+  private async generatePptxSlide(editor: Editor, view: MarkdownView, options: SlideOptionsResult) {
+    const noteFile = view.file;
+    if (!noteFile) return;
+
+    // Check if Drive is connected for PPTX upload
+    if (!this.driveUploadService || !this.driveUploadService.isConnected()) {
+      new Notice('PPTX 업로드를 위해 Google Drive에 먼저 연결해주세요.');
+      return;
+    }
+
+    const apiKey = this.getApiKeyForProvider();
+    this.isGenerating = true;
+    let progressModal: ProgressModal | null = null;
+
+    try {
+      if (this.settings.showProgressModal) {
+        progressModal = new ProgressModal(this.app, () => {
+          this.isGenerating = false;
+        }, 'slide');
+        progressModal.open();
+      }
+
+      // Get content
+      progressModal?.updateProgress({
+        step: 'analyzing',
+        progress: 5,
+        message: '콘텐츠 분석 중...'
+      });
+
+      let content: string;
+      if (options.inputSource === 'custom-text') {
+        content = options.customText;
+      } else {
+        content = await this.app.vault.read(noteFile);
+      }
+
+      if (!content.trim()) {
+        throw new GenerationErrorClass('NO_CONTENT', 'No content to generate from');
+      }
+
+      // Generate PPTX JSON data
+      progressModal?.updateProgress({
+        step: 'generating-slide',
+        progress: 20,
+        message: 'PPTX 데이터 생성 중...',
+        details: `${this.settings.selectedProvider} 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
+      });
+
+      const systemPrompt = options.selectedPromptConfig.prompt;
+      const presentationData = await this.slideService.generatePptxSlideData(
+        content,
+        this.settings.selectedProvider,
+        this.settings.promptModel,
+        apiKey,
+        systemPrompt
+      );
+
+      // Generate PPTX file
+      progressModal?.updateProgress({
+        step: 'saving',
+        progress: 50,
+        message: 'PPTX 파일 생성 중...'
+      });
+
+      const pptxResult = await this.pptxService.generatePptx(presentationData);
+
+      // Upload to Google Drive
+      progressModal?.updateProgress({
+        step: 'uploading',
+        progress: 70,
+        message: 'Google Drive에 업로드 중...'
+      });
+
+      const fileName = this.sanitizePptxFileName(presentationData.title) + '.pptx';
+      const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+      const uploadResult = await this.driveUploadService.uploadBuffer(
+        pptxResult.pptxBuffer,
+        mimeType,
+        fileName,
+        this.settings.driveFolder || 'NanoBanana',
+        this.settings.organizeFoldersByDate,
+        (progress) => {
+          progressModal?.updateProgress({
+            step: 'uploading',
+            progress: 70 + (progress.progress * 0.2),
+            message: progress.message
+          });
+        }
+      );
+
+      // Embed in note
+      progressModal?.updateProgress({
+        step: 'embedding',
+        progress: 95,
+        message: '노트에 삽입 중...'
+      });
+
+      const embedCode = this.generatePptxEmbed(uploadResult, presentationData.title);
+      const cursor = editor.getCursor();
+      editor.replaceRange(embedCode + '\n\n', cursor);
+
+      progressModal?.updateProgress({
+        step: 'complete',
+        progress: 100,
+        message: 'PPTX 생성 완료!'
+      });
+
+      new Notice(`PPTX 프레젠테이션이 생성되었습니다!\n${pptxResult.slideCount}장 슬라이드`);
+
+    } catch (error) {
+      console.error('PPTX generation error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (progressModal) {
+        progressModal.showError(message);
+      } else {
+        new Notice(`Generation failed: ${message}`);
+      }
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+
+  /**
+   * Sanitize filename for PPTX
+   */
+  private sanitizePptxFileName(title: string): string {
+    return title
+      .replace(/[<>:"/\\|?*]/g, '') // Remove invalid characters
+      .replace(/\s+/g, '_')         // Replace spaces with underscores
+      .substring(0, 50)             // Limit length
+      || 'presentation';
+  }
+
+  /**
+   * Generate embed code for PPTX uploaded to Google Drive
+   */
+  private generatePptxEmbed(uploadResult: DriveUploadResult, title: string): string {
+    // Google Drive preview URL for Office documents
+    const previewUrl = `https://drive.google.com/file/d/${uploadResult.fileId}/preview`;
+
+    return `
+<!-- PPTX Presentation: ${title} -->
+<iframe
+  src="${previewUrl}"
+  width="100%"
+  height="480"
+  frameborder="0"
+  allowfullscreen="true">
+</iframe>
+
+[Download PPTX](${uploadResult.webViewLink})
+`.trim();
+  }
+
   private showSlideOptionsModal(): Promise<SlideOptionsResult> {
     return new Promise((resolve) => {
       const modal = new SlideOptionsModal(
@@ -764,7 +943,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
         this.settings.defaultSlidePromptType || 'notebooklm-summary',
         this.settings.customSlidePrompts || [],
         (result) => resolve(result),
-        this.settings.preferredLanguage
+        this.settings.preferredLanguage,
+        this.settings.defaultSlideOutputFormat || 'html'
       );
       modal.open();
     });

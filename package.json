@@ -1,6 +1,6 @@
 {
   "name": "nanobanana-cloud",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Generate AI-powered Knowledge Posters from Obsidian notes and upload to Google Drive",
   "main": "main.js",
   "scripts": {
@@ -31,5 +31,8 @@
     "obsidian": "latest",
     "tslib": "2.4.0",
     "typescript": "4.7.4"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
   }
 }

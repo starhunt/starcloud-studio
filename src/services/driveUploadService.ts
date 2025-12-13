@@ -618,4 +618,144 @@ export class DriveUploadService {
     const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
     return `${timestamp}_${fileName}`;
   }
+
+  /**
+   * Upload an ArrayBuffer directly to Google Drive
+   * Useful for uploading generated files like PPTX
+   */
+  async uploadBuffer(
+    buffer: ArrayBuffer,
+    mimeType: string,
+    fileName: string,
+    baseFolderPath: string,
+    organizeFoldersByDate: boolean,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<DriveUploadResult> {
+    try {
+      // Stage 1: Preparing
+      onProgress?.({
+        stage: 'preparing',
+        message: 'Preparing upload...',
+        progress: 10
+      });
+
+      const accessToken = await this.ensureValidToken();
+
+      // Get or create folder (with year/month structure if enabled)
+      const folderId = await this.ensureFolderWithDateStructure(baseFolderPath, organizeFoldersByDate);
+
+      // Add timestamp prefix to filename
+      const timestampedFileName = this.addTimestampPrefix(fileName);
+
+      // Check for duplicate filename and get unique name
+      const uniqueFileName = await this.getUniqueFileName(folderId, timestampedFileName, accessToken);
+
+      // Stage 2: Uploading
+      onProgress?.({
+        stage: 'uploading',
+        message: 'Uploading to Google Drive...',
+        progress: 30
+      });
+
+      // Convert ArrayBuffer to base64
+      const base64Data = this.arrayBufferToBase64(buffer);
+
+      // Create file metadata
+      const metadata = {
+        name: uniqueFileName,
+        mimeType: mimeType,
+        parents: [folderId]
+      };
+
+      // Upload using multipart
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelimiter = `\r\n--${boundary}--`;
+
+      const multipartBody =
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        `Content-Type: ${mimeType}\r\n` +
+        'Content-Transfer-Encoding: base64\r\n\r\n' +
+        base64Data +
+        closeDelimiter;
+
+      const uploadResponse = await requestUrl({
+        url: `${this.UPLOAD_URL}/files?uploadType=multipart&fields=id,webViewLink,webContentLink,name,mimeType`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartBody
+      });
+
+      if (uploadResponse.status !== 200) {
+        throw new GenerationErrorClass('UPLOAD_ERROR', `Upload failed: ${uploadResponse.status}`);
+      }
+
+      const fileData = uploadResponse.json;
+      const fileId = fileData.id;
+
+      // Stage 3: Setting permission
+      onProgress?.({
+        stage: 'setting-permission',
+        message: 'Setting public access...',
+        progress: 70
+      });
+
+      await this.makeFilePublic(fileId);
+
+      // Get updated file info
+      const fileInfo = await this.getFileInfo(fileId);
+
+      // Stage 4: Complete
+      onProgress?.({
+        stage: 'complete',
+        message: 'Upload complete!',
+        progress: 100
+      });
+
+      return {
+        fileId: fileId,
+        webViewLink: fileInfo.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
+        webContentLink: fileInfo.webContentLink || `https://drive.google.com/uc?export=view&id=${fileId}`,
+        fileName: uniqueFileName,
+        mimeType: mimeType
+      };
+
+    } catch (error) {
+      console.error('Error uploading buffer to Google Drive:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      onProgress?.({
+        stage: 'error',
+        message: 'Upload failed',
+        progress: 0,
+        error: message
+      });
+
+      if (error instanceof GenerationErrorClass) {
+        throw error;
+      }
+      throw new GenerationErrorClass('UPLOAD_ERROR', `Upload failed: ${message}`);
+    }
+  }
+
+  /**
+   * Convert ArrayBuffer to base64 string
+   */
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 8192;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, Math.min(i + chunkSize, bytes.length));
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+
+    return btoa(binary);
+  }
 }
