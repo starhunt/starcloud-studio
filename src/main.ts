@@ -23,6 +23,7 @@ import { QuickOptionsModal } from './modals/quickOptionsModal';
 import { PreviewModal } from './modals/previewModal';
 import { ProgressModal, ProgressMode } from './modals/progressModal';
 import { SlideOptionsModal } from './modals/slideOptionsModal';
+import { DriveUploadModal, DriveUploadModalResult } from './modals/driveUploadModal';
 
 export default class NanoBananaCloudPlugin extends Plugin {
   settings: NanoBananaCloudSettings;
@@ -86,6 +87,14 @@ export default class NanoBananaCloudPlugin extends Plugin {
       name: 'Generate interactive slide',
       editorCallback: (editor: Editor, view: MarkdownView) => {
         void this.generateSlide(editor, view);
+      }
+    });
+
+    this.addCommand({
+      id: 'upload-to-drive',
+      name: 'Upload file to Google Drive',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        void this.uploadFileToDrive(editor, view);
       }
     });
 
@@ -759,5 +768,33 @@ export default class NanoBananaCloudPlugin extends Plugin {
       );
       modal.open();
     });
+  }
+
+  /**
+   * Upload file to Google Drive and embed in note
+   */
+  private async uploadFileToDrive(editor: Editor, view: MarkdownView) {
+    // Check if Drive is connected
+    if (!this.driveUploadService || !this.driveUploadService.isConnected()) {
+      new Notice('Please connect to Google Drive first (Command: Connect to Google Drive)');
+      return;
+    }
+
+    // Open upload modal
+    const modal = new DriveUploadModal(
+      this.app,
+      this.driveUploadService,
+      this.settings.driveFolder || 'NanoBanana',
+      this.settings.organizeFoldersByDate !== false,
+      this.settings.showTitleInEmbed !== false,
+      (result: DriveUploadModalResult) => {
+        // Insert embed code at cursor position
+        const cursor = editor.getCursor();
+        editor.replaceRange(result.embedCode + '\n\n', cursor);
+
+        new Notice('File uploaded and embedded successfully!');
+      }
+    );
+    modal.open();
   }
 }

@@ -465,4 +465,139 @@ export class DriveUploadService {
     this.config.refreshToken = '';
     this.config.tokenExpiresAt = 0;
   }
+
+  /**
+   * Upload a File object to Google Drive
+   */
+  async uploadFile(
+    file: File,
+    baseFolderPath: string,
+    organizeFoldersByDate: boolean,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<DriveUploadResult> {
+    try {
+      // Stage 1: Preparing
+      onProgress?.({
+        stage: 'preparing',
+        message: 'Preparing upload...',
+        progress: 10
+      });
+
+      const accessToken = await this.ensureValidToken();
+
+      // Get or create folder (with year/month structure if enabled)
+      const folderId = await this.ensureFolderWithDateStructure(baseFolderPath, organizeFoldersByDate);
+
+      // Check for duplicate filename and get unique name
+      const uniqueFileName = await this.getUniqueFileName(folderId, file.name, accessToken);
+
+      // Stage 2: Uploading
+      onProgress?.({
+        stage: 'uploading',
+        message: 'Uploading to Google Drive...',
+        progress: 30
+      });
+
+      // Read file as base64
+      const base64Data = await this.fileToBase64(file);
+
+      // Create file metadata
+      const metadata = {
+        name: uniqueFileName,
+        mimeType: file.type || 'application/octet-stream',
+        parents: [folderId]
+      };
+
+      // Upload using multipart
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelimiter = `\r\n--${boundary}--`;
+
+      const multipartBody =
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        `Content-Type: ${file.type || 'application/octet-stream'}\r\n` +
+        'Content-Transfer-Encoding: base64\r\n\r\n' +
+        base64Data +
+        closeDelimiter;
+
+      const uploadResponse = await requestUrl({
+        url: `${this.UPLOAD_URL}/files?uploadType=multipart&fields=id,webViewLink,webContentLink,name,mimeType`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartBody
+      });
+
+      if (uploadResponse.status !== 200) {
+        throw new GenerationErrorClass('UPLOAD_ERROR', `Upload failed: ${uploadResponse.status}`);
+      }
+
+      const fileData = uploadResponse.json;
+      const fileId = fileData.id;
+
+      // Stage 3: Setting permission
+      onProgress?.({
+        stage: 'setting-permission',
+        message: 'Setting public access...',
+        progress: 70
+      });
+
+      await this.makeFilePublic(fileId);
+
+      // Get updated file info
+      const fileInfo = await this.getFileInfo(fileId);
+
+      // Stage 4: Complete
+      onProgress?.({
+        stage: 'complete',
+        message: 'Upload complete!',
+        progress: 100
+      });
+
+      return {
+        fileId: fileId,
+        webViewLink: fileInfo.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
+        webContentLink: fileInfo.webContentLink || `https://drive.google.com/uc?export=view&id=${fileId}`,
+        fileName: uniqueFileName,
+        mimeType: file.type || 'application/octet-stream'
+      };
+
+    } catch (error) {
+      console.error('Error uploading file to Google Drive:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      onProgress?.({
+        stage: 'error',
+        message: 'Upload failed',
+        progress: 0,
+        error: message
+      });
+
+      if (error instanceof GenerationErrorClass) {
+        throw error;
+      }
+      throw new GenerationErrorClass('UPLOAD_ERROR', `Upload failed: ${message}`);
+    }
+  }
+
+  /**
+   * Convert File to base64 string
+   */
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = result.split(',')[1] || result;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
 }

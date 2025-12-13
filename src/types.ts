@@ -374,6 +374,37 @@ export interface UploadProgress {
 }
 
 // ============================================================
+// Drive Embedder Types
+// ============================================================
+
+export type ContentCategory = 'video' | 'document' | 'image' | 'audio';
+
+export interface SizeOption {
+  id: string;
+  name: string;
+  width: string;
+  height: string;
+  recommended?: boolean;
+}
+
+export interface FileTypeInfo {
+  category: ContentCategory;
+  extension: string;
+  mimeType: string;
+}
+
+export interface DriveEmbedOptions {
+  size: SizeOption;
+  showTitle: boolean;
+}
+
+export interface UploadModalResult {
+  file: File;
+  uploadResult: DriveUploadResult;
+  embedOptions: DriveEmbedOptions;
+}
+
+// ============================================================
 // Gemini API Response Types
 // ============================================================
 
