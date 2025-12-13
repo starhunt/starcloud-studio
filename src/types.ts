@@ -524,8 +524,9 @@ export type PptxSectionTheme = 'intro' | 'background' | 'concepts' | 'analysis' 
 
 export interface PptxSlideData {
   type: PptxSlideType;
-  section?: PptxSectionTheme;
+  section?: PptxSectionTheme | string;  // Allow any string for flexible section names
   notes?: string;
+  storyPoint?: string;  // New field from v3 prompt
 
   // Common fields
   title?: string;

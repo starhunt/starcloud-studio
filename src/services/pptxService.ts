@@ -101,8 +101,37 @@ export class PptxService {
   /**
    * Get colors for a section theme
    */
-  private getThemeColors(section?: PptxSectionTheme): SectionColors {
-    return SECTION_THEMES[section || 'intro'];
+  private getThemeColors(section?: PptxSectionTheme | string): SectionColors {
+    // Handle valid section themes
+    if (section && section in SECTION_THEMES) {
+      return SECTION_THEMES[section as PptxSectionTheme];
+    }
+
+    // Map common section keywords to themes
+    if (section) {
+      const sectionLower = section.toLowerCase();
+      if (sectionLower.includes('intro') || sectionLower.includes('narrative') || sectionLower.includes('도입')) {
+        return SECTION_THEMES.intro;
+      }
+      if (sectionLower.includes('concept') || sectionLower.includes('개념') || sectionLower.includes('이해')) {
+        return SECTION_THEMES.concepts;
+      }
+      if (sectionLower.includes('analysis') || sectionLower.includes('분석') || sectionLower.includes('논증')) {
+        return SECTION_THEMES.analysis;
+      }
+      if (sectionLower.includes('risk') || sectionLower.includes('limit') || sectionLower.includes('한계') || sectionLower.includes('리스크')) {
+        return SECTION_THEMES.background;
+      }
+      if (sectionLower.includes('apply') || sectionLower.includes('적용') || sectionLower.includes('실무') || sectionLower.includes('action')) {
+        return SECTION_THEMES.application;
+      }
+      if (sectionLower.includes('summary') || sectionLower.includes('정리') || sectionLower.includes('확장') || sectionLower.includes('takeaway')) {
+        return SECTION_THEMES.summary;
+      }
+    }
+
+    // Default fallback
+    return SECTION_THEMES.intro;
   }
 
   /**
@@ -185,8 +214,92 @@ export class PptxService {
         this.addQuoteSlide(pres, slideData, theme);
         break;
       default:
-        this.addContentSlide(pres, slideData, theme);
+        // Map new v3 prompt types to existing renderers
+        this.addMappedSlide(pres, slideData, theme);
     }
+  }
+
+  /**
+   * Map new slide types from v3 prompt to existing renderers
+   */
+  private addMappedSlide(pres: pptxgen, slideData: PptxSlideData, theme: SectionColors): void {
+    const typeStr = String(slideData.type).toLowerCase();
+
+    // Title variants
+    if (typeStr.includes('title') || typeStr.includes('hero')) {
+      this.addTitleSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Agenda variants
+    if (typeStr.includes('agenda') || typeStr.includes('map') || typeStr.includes('목차')) {
+      this.addAgendaSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Definition variants
+    if (typeStr.includes('definition') || typeStr.includes('card') && typeStr.includes('definition')) {
+      this.addDefinitionSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Concept variants
+    if (typeStr.includes('concept') || typeStr.includes('diagram') || typeStr.includes('claim') || typeStr.includes('evidence')) {
+      this.addConceptSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Comparison variants
+    if (typeStr.includes('comparison') || typeStr.includes('matrix') || typeStr.includes('vs') || typeStr.includes('misconception')) {
+      this.addComparisonSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Process/Timeline variants
+    if (typeStr.includes('process') || typeStr.includes('flow') || typeStr.includes('timeline') || typeStr.includes('evolution')) {
+      this.addProcessSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Chart variants
+    if (typeStr.includes('chart') || typeStr.includes('data') || typeStr.includes('insight')) {
+      this.addChartSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Case study variants
+    if (typeStr.includes('case') || typeStr.includes('study') || typeStr.includes('visual')) {
+      this.addCaseStudySlide(pres, slideData, theme);
+      return;
+    }
+
+    // Key points / takeaways / cards variants
+    if (typeStr.includes('key') || typeStr.includes('takeaway') || typeStr.includes('cards') ||
+        typeStr.includes('usecase') || typeStr.includes('action') || typeStr.includes('checklist')) {
+      this.addKeyPointsSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Summary / questions variants
+    if (typeStr.includes('summary') || typeStr.includes('question') || typeStr.includes('open')) {
+      this.addSummarySlide(pres, slideData, theme);
+      return;
+    }
+
+    // Risk / limitation / assumption variants
+    if (typeStr.includes('risk') || typeStr.includes('limit') || typeStr.includes('assumption') || typeStr.includes('boundary')) {
+      this.addConceptSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Section context
+    if (typeStr.includes('section') || typeStr.includes('context')) {
+      this.addSectionSlide(pres, slideData, theme);
+      return;
+    }
+
+    // Default fallback
+    this.addContentSlide(pres, slideData, theme);
   }
 
   /**
