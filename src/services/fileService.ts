@@ -243,7 +243,7 @@ export class FileService {
 
   /**
    * Sanitize title for use in filename
-   * English-only, max 20 characters
+   * English-only, 20-50 characters for better identification
    */
   private sanitizeTitleForFilename(title: string): string {
     // Extract only English letters, numbers, and spaces
@@ -260,7 +260,7 @@ export class FileService {
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .substring(0, 20)
+      .substring(0, 50)
       .replace(/^-|-$/g, '')
       || 'untitled';
   }

@@ -938,9 +938,9 @@ export class PptxService {
         w: 12.33,
         colW: colWidths,
         fontFace: this.FONTS.body,
-        fontSize: 13,
+        fontSize: 15,
         border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
-        rowH: 0.6,
+        rowH: 0.65,
       });
     }
 
@@ -1150,9 +1150,9 @@ export class PptxService {
         w: 12.33,
         colW: Array(colCount).fill(colW),
         fontFace: this.FONTS.body,
-        fontSize: 12,
+        fontSize: 14,
         border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
-        rowH: 0.5,
+        rowH: 0.55,
       });
     }
 
@@ -1960,9 +1960,9 @@ export class PptxService {
       w: element.w,
       colW: Array(colCount).fill(colW),
       fontFace: this.FONTS.body,
-      fontSize: 12,
+      fontSize: 14,
       border: { type: 'solid', pt: 0.5, color: 'E5E7EB' },
-      rowH: 0.5,
+      rowH: 0.55,
     });
   }
 
