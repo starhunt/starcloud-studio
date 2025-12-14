@@ -264,6 +264,11 @@ export interface NanoBananaCloudSettings {
   defaultSlideOutputFormat: SlideOutputFormat;
   defaultPptxGenerationStyle: PptxGenerationStyle;
 
+  // Slide AI Provider (separate from default)
+  slideProvider: AIProvider;
+  slideModel: string;
+  slideMaxOutputTokens: number;
+
   // Git Integration for Slides
   gitEnabled: boolean;
   gitRepoPath: string;

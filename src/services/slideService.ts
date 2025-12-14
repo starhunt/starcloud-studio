@@ -10,6 +10,15 @@ import {
 } from '../types';
 
 export class SlideService {
+  private maxOutputTokens: number = 65536;
+
+  /**
+   * Set max output tokens for API calls
+   */
+  setMaxOutputTokens(tokens: number): void {
+    this.maxOutputTokens = tokens;
+  }
+
   /**
    * Generate an HTML slide from content using the specified AI provider
    */
@@ -265,7 +274,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
-        max_tokens: 64000,
+        max_tokens: this.maxOutputTokens,
         temperature: 0.7
       })
     });
@@ -299,7 +308,7 @@ export class SlideService {
         }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 65536  // Higher limit for HTML output
+          maxOutputTokens: this.maxOutputTokens
         },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -340,7 +349,7 @@ export class SlideService {
       },
       body: JSON.stringify({
         model: model,
-        max_tokens: 64000,
+        max_tokens: this.maxOutputTokens,
         system: systemPrompt,
         messages: [
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
@@ -370,7 +379,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
-        max_tokens: 64000,
+        max_tokens: this.maxOutputTokens,
         temperature: 0.7
       })
     });
@@ -397,7 +406,7 @@ export class SlideService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
         ],
-        max_tokens: 64000,
+        max_tokens: this.maxOutputTokens,
         temperature: 0.7
       })
     });

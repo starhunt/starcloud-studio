@@ -508,6 +508,53 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         })
       );
 
+    // Slide AI Provider (separate from default)
+    new Setting(containerEl)
+      .setName('Slide AI Provider')
+      .setDesc('AI provider for slide generation (separate from image generation)')
+      .addDropdown(dropdown => {
+        Object.entries(PROVIDER_CONFIGS).forEach(([key, config]) => {
+          dropdown.addOption(key, config.name);
+        });
+        dropdown.setValue(this.plugin.settings.slideProvider || 'google');
+        dropdown.onChange(async (value: AIProvider) => {
+          this.plugin.settings.slideProvider = value;
+          this.plugin.settings.slideModel = PROVIDER_CONFIGS[value].defaultModel;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+
+    // Slide Model
+    const slideProvider = this.plugin.settings.slideProvider || 'google';
+    const slideProviderConfig = PROVIDER_CONFIGS[slideProvider];
+
+    new Setting(containerEl)
+      .setName('Slide Model')
+      .setDesc(`Model for slide generation. Suggestions: ${slideProviderConfig.suggestedModels}`)
+      .addText(text => text
+        .setPlaceholder(slideProviderConfig.defaultModel)
+        .setValue(this.plugin.settings.slideModel || slideProviderConfig.defaultModel)
+        .onChange(async (value) => {
+          this.plugin.settings.slideModel = value || slideProviderConfig.defaultModel;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Slide Max Output Tokens
+    new Setting(containerEl)
+      .setName('Max Output Tokens')
+      .setDesc('Maximum tokens for slide generation output (8000-131072). Higher = longer slides but more API cost.')
+      .addText(text => text
+        .setPlaceholder('65536')
+        .setValue(String(this.plugin.settings.slideMaxOutputTokens || 65536))
+        .onChange(async (value) => {
+          const num = parseInt(value) || 65536;
+          this.plugin.settings.slideMaxOutputTokens = Math.min(131072, Math.max(8000, num));
+          await this.plugin.saveSettings();
+        })
+      );
+
     // Default Slide Prompt Type
     new Setting(containerEl)
       .setName('Default System Prompt')

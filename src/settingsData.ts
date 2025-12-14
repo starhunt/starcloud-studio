@@ -53,6 +53,11 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   defaultSlideOutputFormat: 'html' as SlideOutputFormat,
   defaultPptxGenerationStyle: 'standard' as PptxGenerationStyle,
 
+  // Slide AI Provider (separate from default)
+  slideProvider: 'google',
+  slideModel: 'gemini-2.5-flash',
+  slideMaxOutputTokens: 65536,
+
   // Git Integration for Slides
   gitEnabled: false,
   gitRepoPath: '',

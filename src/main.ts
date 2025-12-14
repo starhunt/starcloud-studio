@@ -8,7 +8,9 @@ import {
   InputSource,
   EmbedPosition,
   GenerationErrorClass,
-  DriveUploadResult
+  DriveUploadResult,
+  AIProvider,
+  PROVIDER_CONFIGS
 } from './types';
 import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
 import { NanoBananaCloudSettingTab } from './settings';
@@ -496,7 +498,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
   /**
    * Get API key for the currently selected provider
    */
-  private getApiKeyForProvider(): string {
+  private getApiKeyForProvider(provider?: AIProvider): string {
+    const targetProvider = provider || this.settings.selectedProvider;
     const keyMap: Record<string, string> = {
       openai: this.settings.openaiApiKey,
       google: this.settings.googleApiKey,
@@ -504,7 +507,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       xai: this.settings.xaiApiKey,
       glm: this.settings.glmApiKey
     };
-    return keyMap[this.settings.selectedProvider] || '';
+    return keyMap[targetProvider] || '';
   }
 
   /**
@@ -621,10 +624,11 @@ export default class NanoBananaCloudPlugin extends Plugin {
       return;
     }
 
-    // Check API key
-    const apiKey = this.getApiKeyForProvider();
+    // Check API key for slide provider
+    const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
+    const apiKey = this.getApiKeyForProvider(slideProvider);
     if (!apiKey) {
-      new Notice(`Please configure ${this.settings.selectedProvider} API key in settings`);
+      new Notice(`Please configure ${slideProvider} API key in settings for slide generation`);
       return;
     }
 
@@ -633,6 +637,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
     if (!options.confirmed) {
       return;
     }
+
+    // Set max output tokens for slide service
+    this.slideService.setMaxOutputTokens(this.settings.slideMaxOutputTokens || 65536);
 
     // Branch based on output format
     if (options.outputFormat === 'pptx') {
@@ -649,7 +656,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
     const noteFile = view.file;
     if (!noteFile) return;
 
-    const apiKey = this.getApiKeyForProvider();
+    const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
+    const slideModel = this.settings.slideModel || PROVIDER_CONFIGS[slideProvider].defaultModel;
+    const apiKey = this.getApiKeyForProvider(slideProvider);
     this.isGenerating = true;
     let progressModal: ProgressModal | null = null;
 
@@ -684,14 +693,14 @@ export default class NanoBananaCloudPlugin extends Plugin {
         step: 'generating-slide',
         progress: 20,
         message: 'HTML 슬라이드 생성 중...',
-        details: `${this.settings.selectedProvider} 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
+        details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
       });
 
       const systemPrompt = options.selectedPromptConfig.prompt;
       const result = await this.slideService.generateSlide(
         content,
-        this.settings.selectedProvider,
-        this.settings.promptModel,
+        slideProvider,
+        slideModel,
         apiKey,
         systemPrompt
       );
@@ -790,7 +799,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
       return;
     }
 
-    const apiKey = this.getApiKeyForProvider();
+    const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
+    const slideModel = this.settings.slideModel || PROVIDER_CONFIGS[slideProvider].defaultModel;
+    const apiKey = this.getApiKeyForProvider(slideProvider);
     this.isGenerating = true;
     let progressModal: ProgressModal | null = null;
 
@@ -825,7 +836,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         step: 'generating-slide',
         progress: 20,
         message: 'PPTX 데이터 생성 중...',
-        details: `${this.settings.selectedProvider} 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
+        details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
       });
 
       const systemPrompt = options.selectedPromptConfig.prompt;
@@ -844,8 +855,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
         // Flexible mode: element-based layout
         const flexibleData = await this.slideService.generateFlexiblePptxSlideData(
           content,
-          this.settings.selectedProvider,
-          this.settings.promptModel,
+          slideProvider,
+          slideModel,
           apiKey,
           systemPrompt
         );
@@ -854,8 +865,8 @@ export default class NanoBananaCloudPlugin extends Plugin {
         // Standard mode: fixed slide types
         const presentationData = await this.slideService.generatePptxSlideData(
           content,
-          this.settings.selectedProvider,
-          this.settings.promptModel,
+          slideProvider,
+          slideModel,
           apiKey,
           systemPrompt
         );
