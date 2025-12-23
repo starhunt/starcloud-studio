@@ -76,7 +76,8 @@ export class ProgressModal extends Modal {
     contentEl.empty();
     contentEl.addClass('nanobanana-progress-modal');
 
-    const title = this.mode === 'pptx' ? '📊 PPTX 생성 중' :
+    const title = this.mode === 'speech' ? '🎤 오디오 생성 중' :
+                  this.mode === 'pptx' ? '📊 PPTX 생성 중' :
                   this.mode === 'slide' ? '🎴 슬라이드 생성 중' : '🎨 포스터 생성 중';
     contentEl.createEl('h2', { text: title });
 
