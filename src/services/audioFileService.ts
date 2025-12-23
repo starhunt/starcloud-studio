@@ -22,11 +22,14 @@ export class AudioFileService {
       const baseName = noteFile.basename.replace(/[^a-zA-Z0-9가-힣]/g, '-');
       const fileName = `${baseName}-speech-${timestamp}.${extension}`;
 
+      // Create date-based folder structure (year/month)
+      const datePath = this.getDateBasedPath(audioFolder);
+
       // Ensure audio folder exists
-      await this.ensureFolderExistsRecursive(audioFolder);
+      await this.ensureFolderExistsRecursive(datePath);
 
       // Full path for the audio file
-      const audioPath = normalizePath(`${audioFolder}/${fileName}`);
+      const audioPath = normalizePath(`${datePath}/${fileName}`);
 
       // Save file
       await this.app.vault.createBinary(audioPath, audioData);
@@ -35,6 +38,16 @@ export class AudioFileService {
     } catch (error) {
       throw this.createError('SAVE_ERROR', `Failed to save audio: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  /**
+   * Get date-based folder path (baseFolder/YYYY/MM)
+   */
+  private getDateBasedPath(baseFolder: string): string {
+    const now = new Date();
+    const year = now.getFullYear().toString();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    return normalizePath(`${baseFolder}/${year}/${month}`);
   }
 
   /**
