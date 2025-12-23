@@ -67,24 +67,24 @@ export class SpeechOptionsModal extends Modal {
 
     // Title
     contentEl.createEl('h2', {
-      text: 'Generate Speech from Note',
+      text: '🎤 노트에서 음성 생성',
       cls: 'nanobanana-modal-title'
     });
 
     contentEl.createEl('p', {
-      text: 'Convert your note into an audio summary using AI-powered text-to-speech.',
+      text: '노트 내용을 AI가 요약하여 음성 파일로 변환합니다.',
       cls: 'nanobanana-modal-desc'
     });
 
     // Input Source Selection
     new Setting(contentEl)
-      .setName('Input Source')
-      .setDesc('Select the content source for speech generation')
+      .setName('입력 소스')
+      .setDesc('음성 생성에 사용할 콘텐츠를 선택하세요')
       .addDropdown(dropdown => dropdown
         .addOptions({
-          'fullNote': 'Full Note',
-          'selection': 'Current Selection',
-          'custom': 'Custom Text'
+          'fullNote': '전체 노트',
+          'selection': '선택 영역',
+          'custom': '직접 입력'
         })
         .setValue(this.selectedInputSource)
         .onChange((value: InputSource) => {
@@ -99,8 +99,8 @@ export class SpeechOptionsModal extends Modal {
 
     // Speech Template Selection
     new Setting(contentEl)
-      .setName('Speech Template')
-      .setDesc('Choose the style of speech generation')
+      .setName('스피치 템플릿')
+      .setDesc('음성 생성 스타일을 선택하세요')
       .addDropdown(dropdown => {
         Object.entries(SPEECH_TEMPLATE_CONFIGS).forEach(([key, config]) => {
           dropdown.addOption(key, `${config.icon} ${config.nameKo} (${config.name})`);
@@ -117,8 +117,8 @@ export class SpeechOptionsModal extends Modal {
     // Target Duration
     const durationConfig = SPEECH_TEMPLATE_CONFIGS[this.selectedTemplate].targetDurationMinutes;
     new Setting(contentEl)
-      .setName('Target Duration')
-      .setDesc(`Target length for the generated audio (${durationConfig.min}-${durationConfig.max} minutes)`)
+      .setName('목표 길이')
+      .setDesc(`생성할 오디오 길이 (${durationConfig.min}-${durationConfig.max}분)`)
       .addSlider(slider => slider
         .setLimits(durationConfig.min, durationConfig.max, 1)
         .setValue(this.targetDuration)
@@ -130,8 +130,8 @@ export class SpeechOptionsModal extends Modal {
 
     // Language Selection
     new Setting(contentEl)
-      .setName('Language')
-      .setDesc('Language for the speech script and audio')
+      .setName('언어')
+      .setDesc('스크립트 및 음성 생성 언어')
       .addDropdown(dropdown => {
         Object.entries(LANGUAGE_NAMES).forEach(([key, name]) => {
           dropdown.addOption(key, name);
@@ -145,8 +145,8 @@ export class SpeechOptionsModal extends Modal {
 
     // TTS Provider Selection
     new Setting(contentEl)
-      .setName('TTS Provider')
-      .setDesc('Select the text-to-speech service')
+      .setName('TTS 프로바이더')
+      .setDesc('음성 변환 서비스를 선택하세요')
       .addDropdown(dropdown => {
         Object.entries(TTS_PROVIDER_CONFIGS).forEach(([key, config]) => {
           dropdown.addOption(key, config.name);
@@ -166,8 +166,8 @@ export class SpeechOptionsModal extends Modal {
 
     // Upload to Drive
     new Setting(contentEl)
-      .setName('Upload to Google Drive')
-      .setDesc('Also upload the generated audio to Google Drive')
+      .setName('Google Drive에 업로드')
+      .setDesc('생성된 오디오를 Google Drive에도 업로드합니다')
       .addToggle(toggle => toggle
         .setValue(this.uploadToDrive)
         .onChange((value) => {
@@ -180,7 +180,7 @@ export class SpeechOptionsModal extends Modal {
 
     // Cancel button
     const cancelBtn = buttonContainer.createEl('button', {
-      text: 'Cancel',
+      text: '취소',
       cls: 'nanobanana-btn nanobanana-btn-cancel'
     });
     cancelBtn.onclick = () => {
@@ -202,7 +202,7 @@ export class SpeechOptionsModal extends Modal {
 
     // Generate button
     const generateBtn = buttonContainer.createEl('button', {
-      text: 'Generate Speech',
+      text: '🎤 음성 생성',
       cls: 'nanobanana-btn nanobanana-btn-primary'
     });
     generateBtn.onclick = () => {
@@ -231,13 +231,13 @@ export class SpeechOptionsModal extends Modal {
       this.customTextContainer.removeClass('nanobanana-hidden');
 
       this.customTextContainer.createEl('label', {
-        text: 'Custom Text',
+        text: '직접 입력',
         cls: 'nanobanana-label'
       });
 
       const textarea = this.customTextContainer.createEl('textarea', {
         cls: 'nanobanana-custom-text-textarea',
-        placeholder: 'Enter the text you want to convert to speech...'
+        placeholder: '음성으로 변환할 텍스트를 입력하세요...'
       });
       textarea.value = this.customText;
       textarea.rows = 8;
@@ -259,8 +259,8 @@ export class SpeechOptionsModal extends Modal {
       if (isDialogue) {
         // Two voice selections for dialogue mode
         new Setting(this.voiceSelectionContainer)
-          .setName('Host A Voice')
-          .setDesc('Voice for the main explainer')
+          .setName('Host A 음성')
+          .setDesc('설명을 담당하는 진행자 음성')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
               dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
@@ -273,8 +273,8 @@ export class SpeechOptionsModal extends Modal {
           });
 
         new Setting(this.voiceSelectionContainer)
-          .setName('Host B Voice')
-          .setDesc('Voice for the curious questioner')
+          .setName('Host B 음성')
+          .setDesc('질문을 담당하는 진행자 음성')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
               dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
@@ -288,8 +288,8 @@ export class SpeechOptionsModal extends Modal {
       } else {
         // Single voice selection
         new Setting(this.voiceSelectionContainer)
-          .setName('Voice')
-          .setDesc('Select the voice for speech generation')
+          .setName('음성')
+          .setDesc('음성 생성에 사용할 목소리를 선택하세요')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
               dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
@@ -305,9 +305,9 @@ export class SpeechOptionsModal extends Modal {
       // ElevenLabs voice ID input (for now, just a text field)
       new Setting(this.voiceSelectionContainer)
         .setName('Voice ID')
-        .setDesc('Enter the ElevenLabs voice ID')
+        .setDesc('ElevenLabs 음성 ID를 입력하세요')
         .addText(text => text
-          .setPlaceholder('Enter voice ID...')
+          .setPlaceholder('음성 ID 입력...')
           .setValue(this.selectedVoice.id)
           .onChange((value) => {
             this.selectedVoice = { id: value, name: value, gender: 'neutral' };

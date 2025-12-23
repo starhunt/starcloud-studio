@@ -1067,7 +1067,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
     const scriptProvider = this.settings.speechScriptProvider || this.settings.selectedProvider;
     const scriptApiKey = this.getApiKeyForProvider(scriptProvider);
     if (!scriptApiKey) {
-      new Notice(`Please configure ${scriptProvider} API key in settings for speech script generation`);
+      new Notice(`스크립트 생성을 위해 ${scriptProvider} API 키를 설정해주세요`);
       return false;
     }
 
@@ -1075,12 +1075,12 @@ export default class NanoBananaCloudPlugin extends Plugin {
     const ttsProvider = this.settings.ttsProvider;
     if (ttsProvider === 'gemini') {
       if (!this.settings.googleApiKey) {
-        new Notice('Please configure Google API key in settings for Gemini TTS');
+        new Notice('Gemini TTS를 위해 Google API 키를 설정해주세요');
         return false;
       }
     } else if (ttsProvider === 'elevenlabs') {
       if (!this.settings.elevenlabsApiKey) {
-        new Notice('Please configure ElevenLabs API key in settings');
+        new Notice('ElevenLabs API 키를 설정해주세요');
         return false;
       }
     }
@@ -1117,7 +1117,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
 
       const content = await this.getSpeechContent(editor, noteFile, options);
       if (!content.trim()) {
-        throw new GenerationErrorClass('NO_CONTENT', 'No content to generate from');
+        throw new GenerationErrorClass('NO_CONTENT', '생성할 콘텐츠가 없습니다');
       }
 
       // Step 2: Generate speech script
@@ -1317,7 +1317,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
       if (progressModal) {
         progressModal.showError(message);
       } else {
-        new Notice(`Speech generation failed: ${message}`);
+        new Notice(`음성 생성 실패: ${message}`);
       }
     } finally {
       this.isGenerating = false;
