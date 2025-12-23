@@ -51,7 +51,7 @@ export const SUGGESTED_IMAGE_MODELS = 'gemini-2.0-flash-exp, gemini-2.0-flash, i
 // Input Source Types
 // ============================================================
 
-export type InputSource = 'fullNote' | 'selection' | 'custom';
+export type InputSource = 'fullNote' | 'selection' | 'clipboard' | 'custom';
 
 // ============================================================
 // Image Style Types
@@ -774,7 +774,7 @@ export const GEMINI_TTS_VOICES = [
 // Speech Template Types
 // ============================================================
 
-export type SpeechTemplate = 'key-summary' | 'lecture' | 'podcast' | 'notebooklm-dialogue';
+export type SpeechTemplate = 'verbatim' | 'key-summary' | 'lecture' | 'podcast' | 'notebooklm-dialogue';
 
 export interface SpeechTemplateConfig {
   id: SpeechTemplate;
@@ -788,6 +788,16 @@ export interface SpeechTemplateConfig {
 }
 
 export const SPEECH_TEMPLATE_CONFIGS: Record<SpeechTemplate, SpeechTemplateConfig> = {
+  'verbatim': {
+    id: 'verbatim',
+    name: 'Verbatim',
+    nameKo: '원문 그대로',
+    description: 'Read the original text as-is without summarization',
+    descriptionKo: '요약 없이 원문을 그대로 읽기',
+    icon: '📄',
+    requiresDialogue: false,
+    targetDurationMinutes: { min: 1, max: 30 }
+  },
   'key-summary': {
     id: 'key-summary',
     name: 'Key Summary',

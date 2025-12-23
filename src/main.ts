@@ -1336,6 +1336,18 @@ export default class NanoBananaCloudPlugin extends Plugin {
       return options.customInputText;
     }
 
+    if (options.inputSource === 'clipboard') {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText && clipboardText.trim()) {
+          return clipboardText;
+        }
+        throw new Error('클립보드가 비어있습니다');
+      } catch (error) {
+        throw new GenerationErrorClass('NO_CONTENT', '클립보드 내용을 읽을 수 없습니다');
+      }
+    }
+
     if (options.inputSource === 'selection') {
       const selection = this.embedService.getSelectedText(editor);
       if (selection) {

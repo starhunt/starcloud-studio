@@ -84,6 +84,7 @@ export class SpeechOptionsModal extends Modal {
         .addOptions({
           'fullNote': '전체 노트',
           'selection': '선택 영역',
+          'clipboard': '클립보드',
           'custom': '직접 입력'
         })
         .setValue(this.selectedInputSource)
