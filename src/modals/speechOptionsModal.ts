@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, Setting, Editor, MarkdownView } from 'obsidian';
 import {
   InputSource,
   SpeechTemplate,
@@ -25,9 +25,16 @@ export class SpeechOptionsModal extends Modal {
   private targetDuration: number;
   private uploadToDrive: boolean = false;
   private customText: string = '';
+  private sourceContent: string = '';
   private onSubmit: (result: SpeechOptionsResult) => void;
-  private customTextContainer: HTMLElement | null = null;
+
+  // UI Elements
+  private contentPreviewEl: HTMLTextAreaElement | null = null;
+  private charCountEl: HTMLElement | null = null;
+  private templateButtonsContainer: HTMLElement | null = null;
   private voiceSelectionContainer: HTMLElement | null = null;
+  private inputSourceButtons: Map<InputSource, HTMLElement> = new Map();
+  private templateButtons: Map<SpeechTemplate, HTMLElement> = new Map();
 
   constructor(
     app: App,
@@ -57,7 +64,7 @@ export class SpeechOptionsModal extends Modal {
     this.selectedVoiceHostB = GEMINI_TTS_VOICES.find(v => v.id === defaultVoiceHostB) || GEMINI_TTS_VOICES[1];
   }
 
-  onOpen() {
+  async onOpen() {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass('nanobanana-speech-options');
@@ -67,59 +74,70 @@ export class SpeechOptionsModal extends Modal {
 
     // Title
     contentEl.createEl('h2', {
-      text: '🎤 노트에서 음성 생성',
-      cls: 'nanobanana-modal-title'
+      text: '🎤 음성 생성',
+      cls: 'modal-title accent-text'
     });
 
-    contentEl.createEl('p', {
-      text: '노트 내용을 AI가 요약하여 음성 파일로 변환합니다.',
-      cls: 'nanobanana-modal-desc'
-    });
+    // ===== Content Section =====
+    const contentSection = contentEl.createDiv({ cls: 'section' });
 
-    // Input Source Selection
-    new Setting(contentEl)
-      .setName('입력 소스')
-      .setDesc('음성 생성에 사용할 콘텐츠를 선택하세요')
-      .addDropdown(dropdown => dropdown
-        .addOptions({
-          'fullNote': '전체 노트',
-          'selection': '선택 영역',
-          'clipboard': '클립보드',
-          'custom': '직접 입력'
-        })
-        .setValue(this.selectedInputSource)
-        .onChange((value: InputSource) => {
-          this.selectedInputSource = value;
-          this.updateCustomTextVisibility();
-        })
-      );
+    // Input Source Label and Buttons
+    const sourceRow = contentSection.createDiv({ cls: 'source-row' });
+    sourceRow.createEl('span', { text: 'Content:', cls: 'section-label' });
 
-    // Custom Text Container (hidden by default)
-    this.customTextContainer = contentEl.createDiv({ cls: 'nanobanana-custom-text-container' });
-    this.updateCustomTextVisibility();
+    const sourceButtonsContainer = sourceRow.createDiv({ cls: 'source-buttons' });
 
-    // Speech Template Selection
-    new Setting(contentEl)
-      .setName('스피치 템플릿')
-      .setDesc('음성 생성 스타일을 선택하세요')
-      .addDropdown(dropdown => {
-        Object.entries(SPEECH_TEMPLATE_CONFIGS).forEach(([key, config]) => {
-          dropdown.addOption(key, `${config.icon} ${config.nameKo} (${config.name})`);
-        });
-        dropdown.setValue(this.selectedTemplate);
-        dropdown.onChange((value: SpeechTemplate) => {
-          this.selectedTemplate = value;
-          this.updateVoiceSelectionVisibility();
-          this.updateDurationRange();
-        });
-        return dropdown;
+    const inputSources: { key: InputSource; label: string }[] = [
+      { key: 'fullNote', label: '전체' },
+      { key: 'selection', label: '선택' },
+      { key: 'clipboard', label: '클립보드' },
+      { key: 'custom', label: '직접입력' }
+    ];
+
+    inputSources.forEach(source => {
+      const btn = sourceButtonsContainer.createEl('button', {
+        text: source.label,
+        cls: `source-btn ${this.selectedInputSource === source.key ? 'active' : ''}`
       });
+      btn.onclick = () => this.selectInputSource(source.key);
+      this.inputSourceButtons.set(source.key, btn);
+    });
 
-    // Target Duration
+    // Content Preview Text Area
+    const contentPreviewContainer = contentSection.createDiv({ cls: 'content-preview-container' });
+    this.contentPreviewEl = contentPreviewContainer.createEl('textarea', {
+      cls: 'content-preview',
+      attr: {
+        rows: '6',
+        placeholder: '콘텐츠를 불러오는 중...'
+      }
+    });
+    this.contentPreviewEl.oninput = () => {
+      this.customText = this.contentPreviewEl?.value || '';
+      this.updateCharCount();
+    };
+
+    // Character count
+    this.charCountEl = contentPreviewContainer.createDiv({ cls: 'char-count' });
+
+    // Load initial content
+    await this.loadSourceContent();
+
+    // ===== Template Section =====
+    const templateSection = contentEl.createDiv({ cls: 'section' });
+    templateSection.createEl('div', { text: '스피치 템플릿', cls: 'section-label accent-text' });
+
+    this.templateButtonsContainer = templateSection.createDiv({ cls: 'template-buttons' });
+    this.renderTemplateButtons();
+
+    // ===== Settings Section =====
+    const settingsSection = contentEl.createDiv({ cls: 'section settings-section' });
+
+    // Duration slider
     const durationConfig = SPEECH_TEMPLATE_CONFIGS[this.selectedTemplate].targetDurationMinutes;
-    new Setting(contentEl)
+    new Setting(settingsSection)
       .setName('목표 길이')
-      .setDesc(`생성할 오디오 길이 (${durationConfig.min}-${durationConfig.max}분)`)
+      .setDesc(`${durationConfig.min}-${durationConfig.max}분`)
       .addSlider(slider => slider
         .setLimits(durationConfig.min, durationConfig.max, 1)
         .setValue(this.targetDuration)
@@ -129,10 +147,9 @@ export class SpeechOptionsModal extends Modal {
         })
       );
 
-    // Language Selection
-    new Setting(contentEl)
+    // Language
+    new Setting(settingsSection)
       .setName('언어')
-      .setDesc('스크립트 및 음성 생성 언어')
       .addDropdown(dropdown => {
         Object.entries(LANGUAGE_NAMES).forEach(([key, name]) => {
           dropdown.addOption(key, name);
@@ -144,10 +161,9 @@ export class SpeechOptionsModal extends Modal {
         return dropdown;
       });
 
-    // TTS Provider Selection
-    new Setting(contentEl)
-      .setName('TTS 프로바이더')
-      .setDesc('음성 변환 서비스를 선택하세요')
+    // TTS Provider
+    new Setting(settingsSection)
+      .setName('TTS')
       .addDropdown(dropdown => {
         Object.entries(TTS_PROVIDER_CONFIGS).forEach(([key, config]) => {
           dropdown.addOption(key, config.name);
@@ -156,19 +172,18 @@ export class SpeechOptionsModal extends Modal {
         dropdown.onChange((value: TTSProvider) => {
           this.selectedTtsProvider = value;
           this.selectedTtsModel = TTS_PROVIDER_CONFIGS[value].defaultModel;
-          this.updateVoiceSelectionVisibility();
+          this.updateVoiceSelection();
         });
         return dropdown;
       });
 
     // Voice Selection Container
-    this.voiceSelectionContainer = contentEl.createDiv({ cls: 'nanobanana-voice-selection-container' });
-    this.updateVoiceSelectionVisibility();
+    this.voiceSelectionContainer = settingsSection.createDiv({ cls: 'voice-selection-container' });
+    this.updateVoiceSelection();
 
     // Upload to Drive
-    new Setting(contentEl)
-      .setName('Google Drive에 업로드')
-      .setDesc('생성된 오디오를 Google Drive에도 업로드합니다')
+    new Setting(settingsSection)
+      .setName('Google Drive 업로드')
       .addToggle(toggle => toggle
         .setValue(this.uploadToDrive)
         .onChange((value) => {
@@ -176,81 +191,144 @@ export class SpeechOptionsModal extends Modal {
         })
       );
 
-    // Buttons container
-    const buttonContainer = contentEl.createDiv({ cls: 'nanobanana-button-container' });
+    // ===== Buttons =====
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
 
-    // Cancel button
     const cancelBtn = buttonContainer.createEl('button', {
       text: '취소',
-      cls: 'nanobanana-btn nanobanana-btn-cancel'
+      cls: 'btn-cancel'
     });
     cancelBtn.onclick = () => {
-      this.onSubmit({
-        confirmed: false,
-        inputSource: this.selectedInputSource,
-        customInputText: this.customText,
-        template: this.selectedTemplate,
-        language: this.selectedLanguage,
-        ttsProvider: this.selectedTtsProvider,
-        ttsModel: this.selectedTtsModel,
-        voice: this.selectedVoice,
-        dialogueVoices: this.getDialogueVoices(),
-        targetDuration: this.targetDuration,
-        uploadToDrive: this.uploadToDrive
-      });
-      this.close();
+      this.submitResult(false);
     };
 
-    // Generate button
     const generateBtn = buttonContainer.createEl('button', {
-      text: '🎤 음성 생성',
-      cls: 'nanobanana-btn nanobanana-btn-primary'
+      text: '생성',
+      cls: 'btn-primary'
     });
     generateBtn.onclick = () => {
-      this.onSubmit({
-        confirmed: true,
-        inputSource: this.selectedInputSource,
-        customInputText: this.customText,
-        template: this.selectedTemplate,
-        language: this.selectedLanguage,
-        ttsProvider: this.selectedTtsProvider,
-        ttsModel: this.selectedTtsModel,
-        voice: this.selectedVoice,
-        dialogueVoices: this.getDialogueVoices(),
-        targetDuration: this.targetDuration,
-        uploadToDrive: this.uploadToDrive
-      });
-      this.close();
+      this.submitResult(true);
     };
   }
 
-  private updateCustomTextVisibility() {
-    if (!this.customTextContainer) return;
-    this.customTextContainer.empty();
+  private selectInputSource(source: InputSource) {
+    this.selectedInputSource = source;
 
-    if (this.selectedInputSource === 'custom') {
-      this.customTextContainer.removeClass('nanobanana-hidden');
+    // Update button states
+    this.inputSourceButtons.forEach((btn, key) => {
+      btn.classList.toggle('active', key === source);
+    });
 
-      this.customTextContainer.createEl('label', {
-        text: '직접 입력',
-        cls: 'nanobanana-label'
-      });
-
-      const textarea = this.customTextContainer.createEl('textarea', {
-        cls: 'nanobanana-custom-text-textarea',
-        placeholder: '음성으로 변환할 텍스트를 입력하세요...'
-      });
-      textarea.value = this.customText;
-      textarea.rows = 8;
-      textarea.addEventListener('input', () => {
-        this.customText = textarea.value;
-      });
-    } else {
-      this.customTextContainer.addClass('nanobanana-hidden');
-    }
+    // Update content preview
+    this.loadSourceContent();
   }
 
-  private updateVoiceSelectionVisibility() {
+  private async loadSourceContent() {
+    if (!this.contentPreviewEl) return;
+
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    const editor = view?.editor;
+    const file = view?.file;
+
+    switch (this.selectedInputSource) {
+      case 'fullNote':
+        if (file) {
+          this.sourceContent = await this.app.vault.read(file);
+          this.contentPreviewEl.value = this.sourceContent;
+          this.contentPreviewEl.readOnly = true;
+          this.contentPreviewEl.placeholder = '';
+        } else {
+          this.contentPreviewEl.value = '';
+          this.contentPreviewEl.placeholder = '열린 노트가 없습니다';
+        }
+        break;
+
+      case 'selection':
+        if (editor) {
+          const selection = editor.getSelection();
+          if (selection) {
+            this.sourceContent = selection;
+            this.contentPreviewEl.value = selection;
+            this.contentPreviewEl.readOnly = true;
+            this.contentPreviewEl.placeholder = '';
+          } else {
+            this.contentPreviewEl.value = '';
+            this.contentPreviewEl.placeholder = '선택된 텍스트가 없습니다';
+          }
+        }
+        break;
+
+      case 'clipboard':
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          this.sourceContent = clipboardText;
+          this.contentPreviewEl.value = clipboardText;
+          this.contentPreviewEl.readOnly = true;
+          this.contentPreviewEl.placeholder = '';
+        } catch {
+          this.contentPreviewEl.value = '';
+          this.contentPreviewEl.placeholder = '클립보드를 읽을 수 없습니다';
+        }
+        break;
+
+      case 'custom':
+        this.contentPreviewEl.value = this.customText;
+        this.contentPreviewEl.readOnly = false;
+        this.contentPreviewEl.placeholder = '음성으로 변환할 텍스트를 입력하세요...';
+        this.contentPreviewEl.focus();
+        break;
+    }
+
+    this.updateCharCount();
+  }
+
+  private updateCharCount() {
+    if (!this.charCountEl || !this.contentPreviewEl) return;
+    const text = this.contentPreviewEl.value;
+    const charCount = text.length;
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    this.charCountEl.setText(`${charCount.toLocaleString()}자 / ${wordCount.toLocaleString()}단어`);
+  }
+
+  private renderTemplateButtons() {
+    if (!this.templateButtonsContainer) return;
+    this.templateButtonsContainer.empty();
+    this.templateButtons.clear();
+
+    const templates: { key: SpeechTemplate; icon: string; label: string }[] = [
+      { key: 'verbatim', icon: '📄', label: '원문 그대로' },
+      { key: 'key-summary', icon: '📝', label: '핵심 요약' },
+      { key: 'lecture', icon: '🎓', label: '강의식' },
+      { key: 'podcast', icon: '🎙️', label: '팟캐스트' },
+      { key: 'notebooklm-dialogue', icon: '👥', label: 'NotebookLM' }
+    ];
+
+    templates.forEach(template => {
+      const btn = this.templateButtonsContainer!.createEl('button', {
+        cls: `template-btn ${this.selectedTemplate === template.key ? 'active' : ''}`
+      });
+
+      btn.createEl('span', { text: template.icon, cls: 'template-icon' });
+      btn.createEl('span', { text: template.label, cls: 'template-label' });
+
+      btn.onclick = () => this.selectTemplate(template.key);
+      this.templateButtons.set(template.key, btn);
+    });
+  }
+
+  private selectTemplate(template: SpeechTemplate) {
+    this.selectedTemplate = template;
+
+    // Update button states
+    this.templateButtons.forEach((btn, key) => {
+      btn.classList.toggle('active', key === template);
+    });
+
+    // Update voice selection for dialogue mode
+    this.updateVoiceSelection();
+  }
+
+  private updateVoiceSelection() {
     if (!this.voiceSelectionContainer) return;
     this.voiceSelectionContainer.empty();
 
@@ -258,13 +336,11 @@ export class SpeechOptionsModal extends Modal {
       const isDialogue = this.selectedTemplate === 'notebooklm-dialogue';
 
       if (isDialogue) {
-        // Two voice selections for dialogue mode
         new Setting(this.voiceSelectionContainer)
-          .setName('Host A 음성')
-          .setDesc('설명을 담당하는 진행자 음성')
+          .setName('Host A')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
             });
             dropdown.setValue(this.selectedVoiceHostA.id);
             dropdown.onChange((value) => {
@@ -274,11 +350,10 @@ export class SpeechOptionsModal extends Modal {
           });
 
         new Setting(this.voiceSelectionContainer)
-          .setName('Host B 음성')
-          .setDesc('질문을 담당하는 진행자 음성')
+          .setName('Host B')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
             });
             dropdown.setValue(this.selectedVoiceHostB.id);
             dropdown.onChange((value) => {
@@ -287,13 +362,11 @@ export class SpeechOptionsModal extends Modal {
             return dropdown;
           });
       } else {
-        // Single voice selection
         new Setting(this.voiceSelectionContainer)
           .setName('음성')
-          .setDesc('음성 생성에 사용할 목소리를 선택하세요')
           .addDropdown(dropdown => {
             GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
             });
             dropdown.setValue(this.selectedVoice.id);
             dropdown.onChange((value) => {
@@ -303,28 +376,15 @@ export class SpeechOptionsModal extends Modal {
           });
       }
     } else if (this.selectedTtsProvider === 'elevenlabs') {
-      // ElevenLabs voice ID input (for now, just a text field)
       new Setting(this.voiceSelectionContainer)
         .setName('Voice ID')
-        .setDesc('ElevenLabs 음성 ID를 입력하세요')
         .addText(text => text
-          .setPlaceholder('음성 ID 입력...')
+          .setPlaceholder('ElevenLabs Voice ID')
           .setValue(this.selectedVoice.id)
           .onChange((value) => {
             this.selectedVoice = { id: value, name: value, gender: 'neutral' };
           })
         );
-    }
-  }
-
-  private updateDurationRange() {
-    // Duration range is fixed at creation, so we just need to recreate the modal
-    // For simplicity, we'll keep the current duration if it's within range
-    const config = SPEECH_TEMPLATE_CONFIGS[this.selectedTemplate].targetDurationMinutes;
-    if (this.targetDuration < config.min) {
-      this.targetDuration = config.min;
-    } else if (this.targetDuration > config.max) {
-      this.targetDuration = config.max;
     }
   }
 
@@ -338,45 +398,171 @@ export class SpeechOptionsModal extends Modal {
     return undefined;
   }
 
+  private submitResult(confirmed: boolean) {
+    const customInputText = this.selectedInputSource === 'custom'
+      ? this.customText
+      : (this.contentPreviewEl?.value || '');
+
+    this.onSubmit({
+      confirmed,
+      inputSource: this.selectedInputSource,
+      customInputText,
+      template: this.selectedTemplate,
+      language: this.selectedLanguage,
+      ttsProvider: this.selectedTtsProvider,
+      ttsModel: this.selectedTtsModel,
+      voice: this.selectedVoice,
+      dialogueVoices: this.getDialogueVoices(),
+      targetDuration: this.targetDuration,
+      uploadToDrive: this.uploadToDrive
+    });
+    this.close();
+  }
+
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
       .nanobanana-speech-options {
-        width: 550px;
-        max-width: 90vw;
+        width: 600px;
+        max-width: 95vw;
+        padding: 20px;
       }
-      .nanobanana-modal-title {
-        margin-bottom: 8px;
+
+      .nanobanana-speech-options .modal-title {
+        margin: 0 0 20px 0;
+        font-size: 1.4em;
       }
-      .nanobanana-modal-desc {
-        color: var(--text-muted);
+
+      .nanobanana-speech-options .accent-text {
+        color: var(--interactive-accent);
+      }
+
+      .nanobanana-speech-options .section {
         margin-bottom: 20px;
       }
-      .nanobanana-custom-text-container {
-        margin-bottom: 16px;
-      }
-      .nanobanana-custom-text-container.nanobanana-hidden {
-        display: none;
-      }
-      .nanobanana-label {
+
+      .nanobanana-speech-options .section-label {
+        font-weight: 600;
+        margin-bottom: 10px;
         display: block;
-        margin-bottom: 8px;
-        font-weight: 500;
       }
-      .nanobanana-custom-text-textarea {
+
+      .nanobanana-speech-options .source-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .nanobanana-speech-options .source-buttons {
+        display: flex;
+        gap: 8px;
+      }
+
+      .nanobanana-speech-options .source-btn {
+        padding: 6px 14px;
+        border-radius: 16px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.15s ease;
+      }
+
+      .nanobanana-speech-options .source-btn:hover {
+        background: var(--background-modifier-hover);
+      }
+
+      .nanobanana-speech-options .source-btn.active {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border-color: var(--interactive-accent);
+      }
+
+      .nanobanana-speech-options .content-preview-container {
+        position: relative;
+      }
+
+      .nanobanana-speech-options .content-preview {
         width: 100%;
-        min-height: 150px;
+        min-height: 120px;
         padding: 12px;
         border: 1px solid var(--background-modifier-border);
-        border-radius: 4px;
-        font-family: inherit;
-        font-size: 14px;
+        border-radius: 8px;
+        background: var(--background-primary);
+        font-family: var(--font-text);
+        font-size: 13px;
+        line-height: 1.5;
         resize: vertical;
+        color: var(--text-normal);
       }
-      .nanobanana-voice-selection-container {
-        margin-bottom: 16px;
+
+      .nanobanana-speech-options .content-preview:focus {
+        outline: none;
+        border-color: var(--interactive-accent);
       }
-      .nanobanana-button-container {
+
+      .nanobanana-speech-options .content-preview[readonly] {
+        background: var(--background-secondary);
+        color: var(--text-muted);
+      }
+
+      .nanobanana-speech-options .char-count {
+        text-align: right;
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 6px;
+      }
+
+      .nanobanana-speech-options .template-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .nanobanana-speech-options .template-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .nanobanana-speech-options .template-btn:hover {
+        background: var(--background-modifier-hover);
+        border-color: var(--interactive-accent);
+      }
+
+      .nanobanana-speech-options .template-btn.active {
+        background: var(--interactive-accent-hover);
+        border-color: var(--interactive-accent);
+        border-style: dashed;
+        border-width: 2px;
+      }
+
+      .nanobanana-speech-options .template-icon {
+        font-size: 16px;
+      }
+
+      .nanobanana-speech-options .template-label {
+        font-size: 13px;
+      }
+
+      .nanobanana-speech-options .settings-section .setting-item {
+        border-top: none;
+        padding: 8px 0;
+      }
+
+      .nanobanana-speech-options .voice-selection-container .setting-item {
+        padding: 6px 0;
+      }
+
+      .nanobanana-speech-options .modal-button-container {
         display: flex;
         justify-content: flex-end;
         gap: 10px;
@@ -384,22 +570,27 @@ export class SpeechOptionsModal extends Modal {
         padding-top: 16px;
         border-top: 1px solid var(--background-modifier-border);
       }
-      .nanobanana-btn {
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
+
+      .nanobanana-speech-options .btn-cancel,
+      .nanobanana-speech-options .btn-primary {
+        padding: 8px 20px;
+        border-radius: 6px;
         font-size: 14px;
+        cursor: pointer;
       }
-      .nanobanana-btn-cancel {
+
+      .nanobanana-speech-options .btn-cancel {
         background: var(--background-secondary);
         border: 1px solid var(--background-modifier-border);
       }
-      .nanobanana-btn-primary {
+
+      .nanobanana-speech-options .btn-primary {
         background: var(--interactive-accent);
         color: var(--text-on-accent);
         border: none;
       }
-      .nanobanana-btn-primary:hover {
+
+      .nanobanana-speech-options .btn-primary:hover {
         background: var(--interactive-accent-hover);
       }
     `;

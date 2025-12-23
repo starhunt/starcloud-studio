@@ -1202,12 +1202,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
       const isDialogue = options.template === 'notebooklm-dialogue';
 
       if (isDialogue && options.dialogueVoices) {
-        // Parse dialogue segments
-        const segments = this.speechPromptService.parseDialogueSegments(scriptResult.script);
-
-        // Generate dialogue audio with alternating voices
+        // Generate dialogue audio using native multi-speaker TTS
         audioResult = await this.ttsService.generateDialogueAudio(
-          segments,
+          scriptResult.script,
           options.ttsProvider,
           options.ttsModel,
           ttsApiKey,

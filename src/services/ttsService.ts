@@ -50,10 +50,11 @@ export class TTSService {
   }
 
   /**
-   * Generate dialogue audio with alternating voices
+   * Generate dialogue audio with multi-speaker support
+   * Uses Gemini's native multi-speaker TTS API
    */
   async generateDialogueAudio(
-    segments: DialogueSegment[],
+    dialogueScript: string,
     provider: TTSProvider,
     model: string,
     apiKey: string,
@@ -64,48 +65,178 @@ export class TTSService {
       throw this.createError('INVALID_API_KEY', `${TTS_PROVIDER_CONFIGS[provider].name} API key is not configured`);
     }
 
-    if (segments.length === 0) {
-      throw this.createError('NO_CONTENT', 'No dialogue segments provided');
+    if (!dialogueScript.trim()) {
+      throw this.createError('NO_CONTENT', 'No dialogue script provided');
     }
 
     try {
-      // Generate audio for each segment
-      const audioBuffers: ArrayBuffer[] = [];
-      let totalDuration = 0;
-
-      for (const segment of segments) {
-        const voice = segment.speaker === 'hostA' ? voices.hostA : voices.hostB;
-        const result = await this.generateAudio(
-          segment.text,
-          provider,
-          model,
-          apiKey,
-          voice,
-          format
-        );
-        audioBuffers.push(result.audioData);
-        totalDuration += result.duration;
-
-        // Add a small pause between segments (optional: add silence buffer)
-        // For now, we'll just concatenate directly
+      if (provider === 'gemini') {
+        return await this.callGeminiMultiSpeakerTTS(dialogueScript, model, apiKey, voices, format);
+      } else {
+        // For non-Gemini providers, fall back to segment-by-segment generation
+        return await this.generateDialogueAudioFallback(dialogueScript, provider, model, apiKey, voices, format);
       }
-
-      // Concatenate all audio buffers
-      const combinedAudio = this.concatenateAudioBuffers(audioBuffers);
-
-      return {
-        audioData: combinedAudio,
-        mimeType: format === 'mp3' ? 'audio/mpeg' : 'audio/wav',
-        duration: totalDuration,
-        model,
-        provider
-      };
     } catch (error) {
       if (error instanceof GenerationErrorClass) {
         throw error;
       }
       throw this.handleApiError(error, provider);
     }
+  }
+
+  /**
+   * Gemini native multi-speaker TTS
+   */
+  private async callGeminiMultiSpeakerTTS(
+    dialogueScript: string,
+    model: string,
+    apiKey: string,
+    voices: DialogueVoices,
+    format: AudioFormat
+  ): Promise<TTSGenerationResult> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    // Convert script format: [Host A] -> Speaker1:, [Host B] -> Speaker2:
+    const formattedScript = dialogueScript
+      .replace(/\[Host A\]\s*/gi, 'Speaker1: ')
+      .replace(/\[Host B\]\s*/gi, 'Speaker2: ');
+
+    const prompt = `TTS the following conversation between Speaker1 and Speaker2:\n\n${formattedScript}`;
+
+    const response = await requestUrl({
+      url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            multiSpeakerVoiceConfig: {
+              speakerVoiceConfigs: [
+                {
+                  speaker: 'Speaker1',
+                  voiceConfig: {
+                    prebuiltVoiceConfig: {
+                      voiceName: voices.hostA.id
+                    }
+                  }
+                },
+                {
+                  speaker: 'Speaker2',
+                  voiceConfig: {
+                    prebuiltVoiceConfig: {
+                      voiceName: voices.hostB.id
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      })
+    });
+
+    if (response.status !== 200) {
+      throw this.handleHttpError(response.status, response.text, 'gemini');
+    }
+
+    const data = response.json;
+    const audioData = this.extractGeminiAudioData(data);
+
+    if (!audioData) {
+      console.error('Gemini Multi-Speaker TTS response:', JSON.stringify(data, null, 2));
+      throw this.createError('GENERATION_FAILED', 'Gemini Multi-Speaker TTS API returned no audio data.');
+    }
+
+    const pcmBuffer = this.base64ToArrayBuffer(audioData.data);
+    const outputBuffer = this.pcmToWav(pcmBuffer, 24000, 1, 16);
+    const duration = pcmBuffer.byteLength / 48000;
+
+    return {
+      audioData: outputBuffer,
+      mimeType: 'audio/wav',
+      duration,
+      model,
+      provider: 'gemini'
+    };
+  }
+
+  /**
+   * Fallback: Generate dialogue by concatenating individual segments
+   */
+  private async generateDialogueAudioFallback(
+    dialogueScript: string,
+    provider: TTSProvider,
+    model: string,
+    apiKey: string,
+    voices: DialogueVoices,
+    format: AudioFormat
+  ): Promise<TTSGenerationResult> {
+    const segments = this.parseDialogueScript(dialogueScript);
+    const audioBuffers: ArrayBuffer[] = [];
+    let totalDuration = 0;
+
+    for (const segment of segments) {
+      const voice = segment.speaker === 'hostA' ? voices.hostA : voices.hostB;
+      const result = await this.generateAudio(
+        segment.text,
+        provider,
+        model,
+        apiKey,
+        voice,
+        format
+      );
+      audioBuffers.push(result.audioData);
+      totalDuration += result.duration;
+    }
+
+    const combinedAudio = this.concatenateAudioBuffers(audioBuffers);
+
+    return {
+      audioData: combinedAudio,
+      mimeType: format === 'mp3' ? 'audio/mpeg' : 'audio/wav',
+      duration: totalDuration,
+      model,
+      provider
+    };
+  }
+
+  /**
+   * Parse dialogue script into segments
+   */
+  private parseDialogueScript(script: string): DialogueSegment[] {
+    const segments: DialogueSegment[] = [];
+    const lines = script.split(/\n\n+/);
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      if (trimmedLine.match(/^\[Host A\]/i)) {
+        segments.push({
+          speaker: 'hostA',
+          text: trimmedLine.replace(/^\[Host A\]\s*/i, '').trim()
+        });
+      } else if (trimmedLine.match(/^\[Host B\]/i)) {
+        segments.push({
+          speaker: 'hostB',
+          text: trimmedLine.replace(/^\[Host B\]\s*/i, '').trim()
+        });
+      } else if (segments.length > 0) {
+        segments[segments.length - 1].text += ' ' + trimmedLine;
+      } else {
+        segments.push({ speaker: 'hostA', text: trimmedLine });
+      }
+    }
+
+    return segments;
   }
 
   /**
