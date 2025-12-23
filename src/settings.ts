@@ -15,7 +15,13 @@ import {
   InputSource,
   EmbedSize,
   EMBED_SIZES,
-  SlidePromptType
+  SlidePromptType,
+  TTSProvider,
+  TTS_PROVIDER_CONFIGS,
+  SpeechTemplate,
+  SPEECH_TEMPLATE_CONFIGS,
+  GEMINI_TTS_VOICES,
+  AudioFormat
 } from './types';
 import { BUILTIN_SLIDE_PROMPTS } from './settingsData';
 
@@ -54,6 +60,9 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
 
     // Slide Generation Section
     this.createSlideGenerationSection(containerEl);
+
+    // TTS Section
+    this.createTTSSection(containerEl);
 
     // Git Integration Section
     this.createGitIntegrationSection(containerEl);
@@ -607,6 +616,212 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
           // Create a simple modal to show the prompt
           const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
           modal.open();
+        })
+      );
+  }
+
+  private createTTSSection(containerEl: HTMLElement) {
+    new Setting(containerEl)
+      .setName('Text-to-Speech Settings')
+      .setHeading();
+
+    // TTS Provider
+    new Setting(containerEl)
+      .setName('TTS Provider')
+      .setDesc('Select the text-to-speech provider')
+      .addDropdown(dropdown => {
+        Object.entries(TTS_PROVIDER_CONFIGS).forEach(([key, config]) => {
+          dropdown.addOption(key, config.name);
+        });
+        dropdown.setValue(this.plugin.settings.ttsProvider);
+        dropdown.onChange(async (value: TTSProvider) => {
+          this.plugin.settings.ttsProvider = value;
+          this.plugin.settings.ttsModel = TTS_PROVIDER_CONFIGS[value].defaultModel;
+          this.plugin.settings.defaultTtsVoice = TTS_PROVIDER_CONFIGS[value].defaultVoice;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+
+    // ElevenLabs API Key (shown only when ElevenLabs is selected)
+    if (this.plugin.settings.ttsProvider === 'elevenlabs') {
+      new Setting(containerEl)
+        .setName('ElevenLabs API Key')
+        .setDesc('API key for ElevenLabs TTS')
+        .addText(text => text
+          .setPlaceholder('Enter your ElevenLabs API key')
+          .setValue(this.plugin.settings.elevenlabsApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.elevenlabsApiKey = value;
+            await this.plugin.saveSettings();
+          })
+        )
+        .addExtraButton(button => button
+          .setIcon('external-link')
+          .setTooltip('Get ElevenLabs API Key')
+          .onClick(() => window.open('https://elevenlabs.io/app/speech-synthesis', '_blank'))
+        );
+    }
+
+    // TTS Model
+    const ttsProviderConfig = TTS_PROVIDER_CONFIGS[this.plugin.settings.ttsProvider];
+    new Setting(containerEl)
+      .setName('TTS Model')
+      .setDesc(`Model for speech generation. Suggestions: ${ttsProviderConfig.suggestedModels}`)
+      .addText(text => text
+        .setPlaceholder(ttsProviderConfig.defaultModel)
+        .setValue(this.plugin.settings.ttsModel)
+        .onChange(async (value) => {
+          this.plugin.settings.ttsModel = value || ttsProviderConfig.defaultModel;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Default Speech Template
+    new Setting(containerEl)
+      .setName('Default Speech Template')
+      .setDesc('Default template for speech script generation')
+      .addDropdown(dropdown => {
+        Object.entries(SPEECH_TEMPLATE_CONFIGS).forEach(([key, config]) => {
+          dropdown.addOption(key, `${config.icon} ${config.nameKo}`);
+        });
+        dropdown.setValue(this.plugin.settings.defaultSpeechTemplate);
+        dropdown.onChange(async (value: SpeechTemplate) => {
+          this.plugin.settings.defaultSpeechTemplate = value;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+
+    // Default Voice (for non-dialogue mode)
+    if (this.plugin.settings.ttsProvider === 'gemini') {
+      new Setting(containerEl)
+        .setName('Default Voice')
+        .setDesc('Default voice for speech generation')
+        .addDropdown(dropdown => {
+          GEMINI_TTS_VOICES.forEach(voice => {
+            dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+          });
+          dropdown.setValue(this.plugin.settings.defaultTtsVoice);
+          dropdown.onChange(async (value) => {
+            this.plugin.settings.defaultTtsVoice = value;
+            await this.plugin.saveSettings();
+          });
+        });
+
+      // Dialogue voices (for NotebookLM style)
+      if (this.plugin.settings.defaultSpeechTemplate === 'notebooklm-dialogue') {
+        new Setting(containerEl)
+          .setName('Host A Voice')
+          .setDesc('Voice for Host A (main explainer)')
+          .addDropdown(dropdown => {
+            GEMINI_TTS_VOICES.forEach(voice => {
+              dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+            });
+            dropdown.setValue(this.plugin.settings.defaultTtsVoiceHostA);
+            dropdown.onChange(async (value) => {
+              this.plugin.settings.defaultTtsVoiceHostA = value;
+              await this.plugin.saveSettings();
+            });
+          });
+
+        new Setting(containerEl)
+          .setName('Host B Voice')
+          .setDesc('Voice for Host B (curious questioner)')
+          .addDropdown(dropdown => {
+            GEMINI_TTS_VOICES.forEach(voice => {
+              dropdown.addOption(voice.id, `${voice.name} (${voice.gender}) - ${voice.description}`);
+            });
+            dropdown.setValue(this.plugin.settings.defaultTtsVoiceHostB);
+            dropdown.onChange(async (value) => {
+              this.plugin.settings.defaultTtsVoiceHostB = value;
+              await this.plugin.saveSettings();
+            });
+          });
+      }
+    }
+
+    // Speech Script AI Provider
+    new Setting(containerEl)
+      .setName('Script Generation Provider')
+      .setDesc('AI provider for generating speech scripts (separate from TTS)')
+      .addDropdown(dropdown => {
+        Object.entries(PROVIDER_CONFIGS).forEach(([key, config]) => {
+          dropdown.addOption(key, config.name);
+        });
+        dropdown.setValue(this.plugin.settings.speechScriptProvider);
+        dropdown.onChange(async (value: AIProvider) => {
+          this.plugin.settings.speechScriptProvider = value;
+          this.plugin.settings.speechScriptModel = PROVIDER_CONFIGS[value].defaultModel;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+
+    // Speech Script Model
+    const scriptProviderConfig = PROVIDER_CONFIGS[this.plugin.settings.speechScriptProvider];
+    new Setting(containerEl)
+      .setName('Script Generation Model')
+      .setDesc(`Model for script generation. Suggestions: ${scriptProviderConfig.suggestedModels}`)
+      .addText(text => text
+        .setPlaceholder(scriptProviderConfig.defaultModel)
+        .setValue(this.plugin.settings.speechScriptModel)
+        .onChange(async (value) => {
+          this.plugin.settings.speechScriptModel = value || scriptProviderConfig.defaultModel;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Target Audio Duration
+    new Setting(containerEl)
+      .setName('Target Audio Duration')
+      .setDesc('Target duration for generated audio (in minutes)')
+      .addSlider(slider => slider
+        .setLimits(3, 15, 1)
+        .setValue(this.plugin.settings.targetAudioDuration)
+        .setDynamicTooltip()
+        .onChange(async (value) => {
+          this.plugin.settings.targetAudioDuration = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Audio Output Format
+    new Setting(containerEl)
+      .setName('Audio Format')
+      .setDesc('Output format for generated audio')
+      .addDropdown(dropdown => {
+        dropdown.addOption('mp3', 'MP3');
+        dropdown.addOption('wav', 'WAV');
+        dropdown.setValue(this.plugin.settings.audioOutputFormat);
+        dropdown.onChange(async (value: AudioFormat) => {
+          this.plugin.settings.audioOutputFormat = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    // Audio Vault Folder
+    new Setting(containerEl)
+      .setName('Audio Save Folder')
+      .setDesc('Folder path for saving generated audio files')
+      .addText(text => text
+        .setPlaceholder('Audio/TTS')
+        .setValue(this.plugin.settings.audioVaultFolder)
+        .onChange(async (value) => {
+          this.plugin.settings.audioVaultFolder = value || 'Audio/TTS';
+          await this.plugin.saveSettings();
+        })
+      );
+
+    // Show Speech Preview
+    new Setting(containerEl)
+      .setName('Show Script Preview')
+      .setDesc('Preview and edit the speech script before generating audio')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showSpeechPreview)
+        .onChange(async (value) => {
+          this.plugin.settings.showSpeechPreview = value;
+          await this.plugin.saveSettings();
         })
       );
   }

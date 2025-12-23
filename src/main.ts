@@ -4,13 +4,17 @@ import {
   QuickOptionsResult,
   PreviewModalResult,
   SlideOptionsResult,
+  SpeechOptionsResult,
+  SpeechPreviewResult,
   OAuthTokens,
   InputSource,
   EmbedPosition,
   GenerationErrorClass,
   DriveUploadResult,
   AIProvider,
-  PROVIDER_CONFIGS
+  PROVIDER_CONFIGS,
+  TTS_PROVIDER_CONFIGS,
+  DialogueSegment
 } from './types';
 import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
 import { NanoBananaCloudSettingTab } from './settings';
@@ -23,11 +27,16 @@ import { GitService } from './services/gitService';
 import { GoogleOAuthFlow } from './services/googleOAuthFlow';
 import { DriveUploadService } from './services/driveUploadService';
 import { EmbedService } from './services/embedService';
+import { SpeechPromptService } from './services/speechPromptService';
+import { TTSService } from './services/ttsService';
+import { AudioFileService } from './services/audioFileService';
 import { QuickOptionsModal } from './modals/quickOptionsModal';
 import { PreviewModal } from './modals/previewModal';
 import { ProgressModal, ProgressMode } from './modals/progressModal';
 import { SlideOptionsModal } from './modals/slideOptionsModal';
 import { DriveUploadModal, DriveUploadModalResult } from './modals/driveUploadModal';
+import { SpeechOptionsModal } from './modals/speechOptionsModal';
+import { SpeechPreviewModal } from './modals/speechPreviewModal';
 
 export default class NanoBananaCloudPlugin extends Plugin {
   settings: NanoBananaCloudSettings;
@@ -40,6 +49,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
   private fileService: FileService;
   private driveUploadService: DriveUploadService | null = null;
   private embedService: EmbedService;
+  private speechPromptService: SpeechPromptService;
+  private ttsService: TTSService;
+  private audioFileService: AudioFileService;
 
   // State
   private isGenerating = false;
@@ -54,6 +66,9 @@ export default class NanoBananaCloudPlugin extends Plugin {
     this.pptxService = new PptxService();
     this.fileService = new FileService(this.app);
     this.embedService = new EmbedService(this.app);
+    this.speechPromptService = new SpeechPromptService();
+    this.ttsService = new TTSService();
+    this.audioFileService = new AudioFileService(this.app);
 
     // Initialize Drive service if credentials exist
     if (this.settings.googleClientId && this.settings.googleClientSecret) {
@@ -101,6 +116,14 @@ export default class NanoBananaCloudPlugin extends Plugin {
       name: 'Upload file to Google Drive',
       editorCallback: (editor: Editor, view: MarkdownView) => {
         void this.uploadFileToDrive(editor, view);
+      }
+    });
+
+    this.addCommand({
+      id: 'generate-speech',
+      name: 'Generate Speech from Note',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        void this.generateSpeech(editor, view);
       }
     });
 
@@ -1004,5 +1027,380 @@ export default class NanoBananaCloudPlugin extends Plugin {
       }
     );
     modal.open();
+  }
+
+  /**
+   * Generate speech audio from note content
+   */
+  private async generateSpeech(editor: Editor, view: MarkdownView) {
+    if (this.isGenerating) {
+      new Notice('Generation already in progress');
+      return;
+    }
+
+    const noteFile = view.file;
+    if (!noteFile) {
+      new Notice('No active note');
+      return;
+    }
+
+    // Check TTS prerequisites
+    if (!this.checkTTSPrerequisites()) {
+      return;
+    }
+
+    // Show speech options modal
+    const options = await this.showSpeechOptionsModal();
+    if (!options.confirmed) {
+      return;
+    }
+
+    // Start speech generation
+    await this.executeSpeechGeneration(editor, noteFile, options);
+  }
+
+  /**
+   * Check TTS prerequisites
+   */
+  private checkTTSPrerequisites(): boolean {
+    // Check script generation provider API key
+    const scriptProvider = this.settings.speechScriptProvider || this.settings.selectedProvider;
+    const scriptApiKey = this.getApiKeyForProvider(scriptProvider);
+    if (!scriptApiKey) {
+      new Notice(`Please configure ${scriptProvider} API key in settings for speech script generation`);
+      return false;
+    }
+
+    // Check TTS provider API key
+    const ttsProvider = this.settings.ttsProvider;
+    if (ttsProvider === 'gemini') {
+      if (!this.settings.googleApiKey) {
+        new Notice('Please configure Google API key in settings for Gemini TTS');
+        return false;
+      }
+    } else if (ttsProvider === 'elevenlabs') {
+      if (!this.settings.elevenlabsApiKey) {
+        new Notice('Please configure ElevenLabs API key in settings');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Execute speech generation flow
+   */
+  private async executeSpeechGeneration(
+    editor: Editor,
+    noteFile: TFile,
+    options: SpeechOptionsResult
+  ) {
+    this.isGenerating = true;
+    let progressModal: ProgressModal | null = null;
+
+    try {
+      // Show progress modal
+      if (this.settings.showProgressModal) {
+        progressModal = new ProgressModal(this.app, () => {
+          this.isGenerating = false;
+        }, 'speech');
+        progressModal.open();
+      }
+
+      // Step 1: Get content
+      progressModal?.updateProgress({
+        step: 'analyzing',
+        progress: 5,
+        message: '콘텐츠 분석 중...'
+      });
+
+      const content = await this.getSpeechContent(editor, noteFile, options);
+      if (!content.trim()) {
+        throw new GenerationErrorClass('NO_CONTENT', 'No content to generate from');
+      }
+
+      // Step 2: Generate speech script
+      progressModal?.updateProgress({
+        step: 'generating-speech-script',
+        progress: 15,
+        message: '스피치 스크립트 생성 중...',
+        details: `${options.template} 템플릿으로 ${options.targetDuration}분 분량 생성`
+      });
+
+      const scriptProvider = this.settings.speechScriptProvider || this.settings.selectedProvider;
+      const scriptModel = this.settings.speechScriptModel || PROVIDER_CONFIGS[scriptProvider].defaultModel;
+      const scriptApiKey = this.getApiKeyForProvider(scriptProvider);
+
+      let scriptResult = await this.speechPromptService.generateSpeechScript(
+        content,
+        options.template,
+        options.targetDuration,
+        options.language,
+        scriptProvider,
+        scriptModel,
+        scriptApiKey
+      );
+
+      // Step 3: Preview (optional)
+      if (this.settings.showSpeechPreview) {
+        progressModal?.updateProgress({
+          step: 'preview',
+          progress: 35,
+          message: '스크립트 확인 중...'
+        });
+
+        const previewResult = await this.showSpeechPreviewModal(
+          scriptResult.script,
+          options.template,
+          scriptResult.estimatedDuration,
+          scriptResult.wordCount
+        );
+
+        if (!previewResult.confirmed) {
+          this.isGenerating = false;
+          progressModal?.close();
+          return;
+        }
+
+        if (previewResult.regenerate) {
+          // Regenerate script
+          progressModal?.updateProgress({
+            step: 'generating-speech-script',
+            progress: 15,
+            message: '스크립트 재생성 중...'
+          });
+
+          scriptResult = await this.speechPromptService.generateSpeechScript(
+            content,
+            options.template,
+            options.targetDuration,
+            options.language,
+            scriptProvider,
+            scriptModel,
+            scriptApiKey
+          );
+        } else {
+          // Use edited script
+          scriptResult.script = previewResult.script;
+        }
+      }
+
+      // Step 4: Generate audio
+      progressModal?.updateProgress({
+        step: 'generating-audio',
+        progress: 45,
+        message: '음성 생성 중...',
+        details: `${TTS_PROVIDER_CONFIGS[options.ttsProvider].name} 사용 중`
+      });
+
+      const ttsApiKey = options.ttsProvider === 'gemini'
+        ? this.settings.googleApiKey
+        : this.settings.elevenlabsApiKey;
+
+      let audioResult;
+      const isDialogue = options.template === 'notebooklm-dialogue';
+
+      if (isDialogue && options.dialogueVoices) {
+        // Parse dialogue segments
+        const segments = this.speechPromptService.parseDialogueSegments(scriptResult.script);
+
+        // Generate dialogue audio with alternating voices
+        audioResult = await this.ttsService.generateDialogueAudio(
+          segments,
+          options.ttsProvider,
+          options.ttsModel,
+          ttsApiKey,
+          options.dialogueVoices,
+          this.settings.audioOutputFormat
+        );
+      } else {
+        // Generate single voice audio
+        audioResult = await this.ttsService.generateAudio(
+          scriptResult.script,
+          options.ttsProvider,
+          options.ttsModel,
+          ttsApiKey,
+          options.voice,
+          this.settings.audioOutputFormat
+        );
+      }
+
+      // Step 5: Process audio (optional additional processing)
+      progressModal?.updateProgress({
+        step: 'processing-audio',
+        progress: 65,
+        message: '오디오 처리 중...'
+      });
+
+      // Step 6: Save audio locally
+      progressModal?.updateProgress({
+        step: 'saving',
+        progress: 75,
+        message: '오디오 저장 중...'
+      });
+
+      const audioPath = await this.audioFileService.saveAudio(
+        audioResult.audioData,
+        audioResult.mimeType,
+        noteFile,
+        this.settings.audioVaultFolder || 'Audio/TTS'
+      );
+
+      // Step 7: Upload to Drive (optional)
+      let driveResult: DriveUploadResult | null = null;
+
+      if (options.uploadToDrive && this.driveUploadService?.isConnected()) {
+        progressModal?.updateProgress({
+          step: 'uploading',
+          progress: 85,
+          message: 'Google Drive에 업로드 중...'
+        });
+
+        const fileName = this.generateAudioFileName(noteFile.basename, options.template);
+
+        driveResult = await this.driveUploadService.uploadBuffer(
+          audioResult.audioData,
+          audioResult.mimeType,
+          fileName,
+          this.settings.driveFolder || 'NanoBanana',
+          this.settings.organizeFoldersByDate,
+          (progress) => {
+            progressModal?.updateProgress({
+              step: 'uploading',
+              progress: 85 + (progress.progress * 0.1),
+              message: progress.message
+            });
+          }
+        );
+      }
+
+      // Step 8: Embed in note
+      progressModal?.updateProgress({
+        step: 'embedding',
+        progress: 95,
+        message: '노트에 삽입 중...'
+      });
+
+      if (driveResult) {
+        // Embed Drive link
+        await this.audioFileService.embedDriveAudioInNote(
+          noteFile,
+          driveResult.webViewLink,
+          driveResult.fileId,
+          `🎤 ${noteFile.basename} - Speech`,
+          editor
+        );
+      } else {
+        // Embed local file
+        await this.audioFileService.embedAudioInNote(
+          noteFile,
+          audioPath,
+          editor
+        );
+      }
+
+      // Complete!
+      progressModal?.updateProgress({
+        step: 'complete',
+        progress: 100,
+        message: '음성 생성 완료!'
+      });
+
+      const durationStr = this.audioFileService.formatDuration(audioResult.duration);
+      new Notice(`음성이 생성되었습니다! (${durationStr})`);
+
+    } catch (error) {
+      console.error('Speech generation error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (progressModal) {
+        progressModal.showError(message);
+      } else {
+        new Notice(`Speech generation failed: ${message}`);
+      }
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+
+  /**
+   * Get content for speech generation based on input source
+   */
+  private async getSpeechContent(
+    editor: Editor,
+    noteFile: TFile,
+    options: SpeechOptionsResult
+  ): Promise<string> {
+    if (options.inputSource === 'custom' && options.customInputText) {
+      return options.customInputText;
+    }
+
+    if (options.inputSource === 'selection') {
+      const selection = this.embedService.getSelectedText(editor);
+      if (selection) {
+        return selection;
+      }
+    }
+
+    // Full note content
+    return await this.app.vault.read(noteFile);
+  }
+
+  /**
+   * Generate filename for audio file
+   */
+  private generateAudioFileName(noteBasename: string, template: string): string {
+    const timestamp = Date.now().toString(36);
+    const sanitized = noteBasename
+      .replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 30);
+    const extension = this.settings.audioOutputFormat === 'mp3' ? 'mp3' : 'wav';
+    return `${sanitized}-${template}-${timestamp}.${extension}`;
+  }
+
+  /**
+   * Show speech options modal
+   */
+  private showSpeechOptionsModal(): Promise<SpeechOptionsResult> {
+    return new Promise((resolve) => {
+      const modal = new SpeechOptionsModal(
+        this.app,
+        this.settings.defaultInputSource || 'fullNote',
+        this.settings.defaultSpeechTemplate || 'key-summary',
+        this.settings.preferredLanguage || 'ko',
+        this.settings.ttsProvider || 'gemini',
+        this.settings.ttsModel || TTS_PROVIDER_CONFIGS['gemini'].defaultModel,
+        this.settings.defaultTtsVoice || 'Kore',
+        this.settings.defaultTtsVoiceHostA || 'Kore',
+        this.settings.defaultTtsVoiceHostB || 'Charon',
+        this.settings.targetAudioDuration || 5,
+        (result) => resolve(result)
+      );
+      modal.open();
+    });
+  }
+
+  /**
+   * Show speech preview modal
+   */
+  private showSpeechPreviewModal(
+    script: string,
+    template: string,
+    estimatedDuration: number,
+    wordCount: number
+  ): Promise<SpeechPreviewResult> {
+    return new Promise((resolve) => {
+      const modal = new SpeechPreviewModal(
+        this.app,
+        script,
+        template as any,
+        estimatedDuration,
+        wordCount,
+        (result) => resolve(result)
+      );
+      modal.open();
+    });
   }
 }

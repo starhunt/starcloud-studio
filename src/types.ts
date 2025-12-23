@@ -276,6 +276,23 @@ export interface NanoBananaCloudSettings {
   githubToken: string;
   githubPagesUrl: string;
   autoCommitPush: boolean;
+
+  // TTS Settings
+  ttsProvider: TTSProvider;
+  ttsModel: string;
+  elevenlabsApiKey: string;
+  defaultSpeechTemplate: SpeechTemplate;
+  defaultTtsVoice: string;
+  defaultTtsVoiceHostA: string;
+  defaultTtsVoiceHostB: string;
+  targetAudioDuration: number;
+  audioOutputFormat: AudioFormat;
+  audioVaultFolder: string;
+  showSpeechPreview: boolean;
+
+  // Speech Script AI Provider (separate from default)
+  speechScriptProvider: AIProvider;
+  speechScriptModel: string;
 }
 
 // ============================================================
@@ -288,6 +305,9 @@ export type ProgressStep =
   | 'preview'
   | 'generating-image'
   | 'generating-slide'
+  | 'generating-speech-script'
+  | 'generating-audio'
+  | 'processing-audio'
   | 'saving'
   | 'uploading'
   | 'embedding'
@@ -705,4 +725,175 @@ export interface PptxFlexiblePresentationData {
   title: string;
   author?: string;
   slides: PptxFlexibleSlideData[];
+}
+
+// ============================================================
+// TTS Provider Types
+// ============================================================
+
+export type TTSProvider = 'gemini' | 'elevenlabs';
+
+export interface TTSProviderConfig {
+  name: string;
+  endpoint: string;
+  defaultVoice: string;
+  defaultModel: string;
+  suggestedModels: string;
+}
+
+export const TTS_PROVIDER_CONFIGS: Record<TTSProvider, TTSProviderConfig> = {
+  gemini: {
+    name: 'Google Gemini TTS',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+    defaultVoice: 'Kore',
+    defaultModel: 'gemini-2.5-flash-preview-tts',
+    suggestedModels: 'gemini-2.5-flash-preview-tts, gemini-2.0-flash-preview-image-generation'
+  },
+  elevenlabs: {
+    name: 'ElevenLabs',
+    endpoint: 'https://api.elevenlabs.io/v1/text-to-speech',
+    defaultVoice: 'rachel',
+    defaultModel: 'eleven_multilingual_v2',
+    suggestedModels: 'eleven_multilingual_v2, eleven_flash_v2_5, eleven_turbo_v2'
+  }
+};
+
+// Gemini TTS available voices
+export const GEMINI_TTS_VOICES = [
+  { id: 'Zephyr', name: 'Zephyr', gender: 'female' as const, description: 'Bright' },
+  { id: 'Puck', name: 'Puck', gender: 'male' as const, description: 'Upbeat' },
+  { id: 'Charon', name: 'Charon', gender: 'male' as const, description: 'Informative' },
+  { id: 'Kore', name: 'Kore', gender: 'female' as const, description: 'Firm' },
+  { id: 'Fenrir', name: 'Fenrir', gender: 'male' as const, description: 'Excitable' },
+  { id: 'Leda', name: 'Leda', gender: 'female' as const, description: 'Youthful' },
+  { id: 'Orus', name: 'Orus', gender: 'male' as const, description: 'Firm' },
+  { id: 'Aoede', name: 'Aoede', gender: 'female' as const, description: 'Breezy' }
+];
+
+// ============================================================
+// Speech Template Types
+// ============================================================
+
+export type SpeechTemplate = 'key-summary' | 'lecture' | 'podcast' | 'notebooklm-dialogue';
+
+export interface SpeechTemplateConfig {
+  id: SpeechTemplate;
+  name: string;
+  nameKo: string;
+  description: string;
+  descriptionKo: string;
+  icon: string;
+  requiresDialogue: boolean;
+  targetDurationMinutes: { min: number; max: number };
+}
+
+export const SPEECH_TEMPLATE_CONFIGS: Record<SpeechTemplate, SpeechTemplateConfig> = {
+  'key-summary': {
+    id: 'key-summary',
+    name: 'Key Summary',
+    nameKo: '핵심 요약',
+    description: 'Concise, to-the-point summary focusing on main ideas',
+    descriptionKo: '핵심 내용만 간결하게 요약',
+    icon: '📝',
+    requiresDialogue: false,
+    targetDurationMinutes: { min: 3, max: 5 }
+  },
+  'lecture': {
+    id: 'lecture',
+    name: 'Lecture Style',
+    nameKo: '강의식 설명',
+    description: 'Educational explanation as if teaching to students',
+    descriptionKo: '학생들에게 설명하듯 교육적인 설명',
+    icon: '🎓',
+    requiresDialogue: false,
+    targetDurationMinutes: { min: 5, max: 10 }
+  },
+  'podcast': {
+    id: 'podcast',
+    name: 'Podcast Style',
+    nameKo: '팟캐스트 스타일',
+    description: 'Natural conversational tone like a podcast host',
+    descriptionKo: '자연스러운 대화체의 팟캐스트 스타일',
+    icon: '🎙️',
+    requiresDialogue: false,
+    targetDurationMinutes: { min: 5, max: 10 }
+  },
+  'notebooklm-dialogue': {
+    id: 'notebooklm-dialogue',
+    name: 'NotebookLM Style',
+    nameKo: 'NotebookLM 스타일',
+    description: 'Two hosts having a natural conversation discussing the content',
+    descriptionKo: '두 명의 진행자가 대화하며 내용을 설명',
+    icon: '👥',
+    requiresDialogue: true,
+    targetDurationMinutes: { min: 7, max: 12 }
+  }
+};
+
+// ============================================================
+// Voice Types
+// ============================================================
+
+export interface VoiceOption {
+  id: string;
+  name: string;
+  gender: 'male' | 'female' | 'neutral';
+  description?: string;
+}
+
+export interface DialogueVoices {
+  hostA: VoiceOption;
+  hostB: VoiceOption;
+}
+
+export interface DialogueSegment {
+  speaker: 'hostA' | 'hostB';
+  text: string;
+}
+
+// ============================================================
+// Speech Generation Types
+// ============================================================
+
+export interface SpeechGenerationResult {
+  script: string;
+  dialogueSegments?: DialogueSegment[];
+  estimatedDuration: number;  // in minutes
+  wordCount: number;
+  model: string;
+  provider: AIProvider;
+}
+
+export interface TTSGenerationResult {
+  audioData: ArrayBuffer;
+  mimeType: string;
+  duration: number;  // in seconds
+  model: string;
+  provider: TTSProvider;
+}
+
+export type AudioFormat = 'mp3' | 'wav';
+
+// ============================================================
+// Speech Modal Result Types
+// ============================================================
+
+export interface SpeechOptionsResult {
+  confirmed: boolean;
+  inputSource: InputSource;
+  customInputText: string;
+  template: SpeechTemplate;
+  language: PreferredLanguage;
+  ttsProvider: TTSProvider;
+  ttsModel: string;
+  voice: VoiceOption;
+  dialogueVoices?: DialogueVoices;
+  targetDuration: number;  // in minutes
+  uploadToDrive: boolean;
+}
+
+export interface SpeechPreviewResult {
+  confirmed: boolean;
+  script: string;
+  regenerate: boolean;
 }

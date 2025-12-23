@@ -1,7 +1,7 @@
 import { App, Modal } from 'obsidian';
 import { ProgressState, ProgressStep } from '../types';
 
-export type ProgressMode = 'image' | 'slide' | 'pptx';
+export type ProgressMode = 'image' | 'slide' | 'pptx' | 'speech';
 
 export class ProgressModal extends Modal {
   private state: ProgressState;
@@ -41,7 +41,20 @@ export class ProgressModal extends Modal {
     { step: 'complete', label: '완료!', icon: '✅' }
   ];
 
+  private readonly speechSteps: { step: ProgressStep; label: string; icon: string }[] = [
+    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
+    { step: 'generating-speech-script', label: '스피치 스크립트 생성 중...', icon: '✍️' },
+    { step: 'preview', label: '스크립트 확인', icon: '👁️' },
+    { step: 'generating-audio', label: '음성 생성 중...', icon: '🎤' },
+    { step: 'processing-audio', label: '오디오 처리 중...', icon: '🔊' },
+    { step: 'saving', label: '오디오 저장 중...', icon: '💾' },
+    { step: 'uploading', label: 'Google Drive에 업로드 중...', icon: '☁️' },
+    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
+    { step: 'complete', label: '완료!', icon: '✅' }
+  ];
+
   private get steps() {
+    if (this.mode === 'speech') return this.speechSteps;
     if (this.mode === 'pptx') return this.pptxSteps;
     if (this.mode === 'slide') return this.slideSteps;
     return this.imageSteps;
