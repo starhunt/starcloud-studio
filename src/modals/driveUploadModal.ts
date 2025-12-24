@@ -46,36 +46,36 @@ export class DriveUploadModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-drive-upload-modal');
+    contentEl.addClass('starcloud-drive-upload-modal');
 
-    const header = contentEl.createDiv({ cls: 'nanobanana-modal-header' });
-    header.createEl('span', { text: '📁', cls: 'nanobanana-modal-icon' });
-    header.createEl('h2', { text: 'Drive 임베더', cls: 'nanobanana-modal-title' });
+    const header = contentEl.createDiv({ cls: 'starcloud-modal-header' });
+    header.createEl('span', { text: '📁', cls: 'starcloud-modal-icon' });
+    header.createEl('h2', { text: 'Drive 임베더', cls: 'starcloud-modal-title' });
 
     contentEl.createEl('p', {
       text: 'Google Drive에 파일을 업로드하고 임베드 코드를 생성합니다.',
-      cls: 'nanobanana-modal-desc'
+      cls: 'starcloud-modal-desc'
     });
 
     this.createFileDropZone(contentEl);
-    this.fileInfoContainer = contentEl.createDiv({ cls: 'nanobanana-file-info nanobanana-hidden' });
-    this.sizeOptionsContainer = contentEl.createDiv({ cls: 'nanobanana-size-options nanobanana-hidden' });
+    this.fileInfoContainer = contentEl.createDiv({ cls: 'starcloud-file-info starcloud-hidden' });
+    this.sizeOptionsContainer = contentEl.createDiv({ cls: 'starcloud-size-options starcloud-hidden' });
     this.createTitleToggle(contentEl);
-    this.uploadButtonContainer = contentEl.createDiv({ cls: 'nanobanana-upload-button-container nanobanana-hidden' });
+    this.uploadButtonContainer = contentEl.createDiv({ cls: 'starcloud-upload-button-container starcloud-hidden' });
     this.createUploadButton();
-    this.progressContainer = contentEl.createDiv({ cls: 'nanobanana-progress-container nanobanana-hidden' });
+    this.progressContainer = contentEl.createDiv({ cls: 'starcloud-progress-container starcloud-hidden' });
     this.createSupportedFormatsSection(contentEl);
   }
 
   private createFileDropZone(container: HTMLElement) {
-    const dropZone = container.createDiv({ cls: 'nanobanana-drop-zone' });
-    const dropContent = dropZone.createDiv({ cls: 'nanobanana-drop-content' });
-    dropContent.createEl('span', { text: '📂', cls: 'nanobanana-drop-icon' });
+    const dropZone = container.createDiv({ cls: 'starcloud-drop-zone' });
+    const dropContent = dropZone.createDiv({ cls: 'starcloud-drop-content' });
+    dropContent.createEl('span', { text: '📂', cls: 'starcloud-drop-icon' });
     dropContent.createEl('p', { text: '파일을 여기에 드래그하거나' });
 
     const selectBtn = dropContent.createEl('button', {
       text: '파일 선택',
-      cls: 'nanobanana-btn nanobanana-btn-primary'
+      cls: 'starcloud-btn starcloud-btn-primary'
     });
 
     const fileInput = dropContent.createEl('input', { type: 'file' }) as HTMLInputElement;
@@ -91,12 +91,12 @@ export class DriveUploadModal extends Modal {
 
     dropZone.ondragover = (e) => {
       e.preventDefault();
-      dropZone.addClass('nanobanana-drop-zone-hover');
+      dropZone.addClass('starcloud-drop-zone-hover');
     };
-    dropZone.ondragleave = () => dropZone.removeClass('nanobanana-drop-zone-hover');
+    dropZone.ondragleave = () => dropZone.removeClass('starcloud-drop-zone-hover');
     dropZone.ondrop = (e) => {
       e.preventDefault();
-      dropZone.removeClass('nanobanana-drop-zone-hover');
+      dropZone.removeClass('starcloud-drop-zone-hover');
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
         this.processFile(e.dataTransfer.files[0]);
       }
@@ -113,61 +113,61 @@ export class DriveUploadModal extends Modal {
     this.fileCategory = fileInfo ? fileInfo.category : 'image';
     this.updateFileInfo(file);
     this.updateSizeOptions();
-    if (this.uploadButtonContainer) this.uploadButtonContainer.removeClass('nanobanana-hidden');
+    if (this.uploadButtonContainer) this.uploadButtonContainer.removeClass('starcloud-hidden');
   }
 
   private updateFileInfo(file: File) {
     if (!this.fileInfoContainer) return;
     this.fileInfoContainer.empty();
-    this.fileInfoContainer.removeClass('nanobanana-hidden');
+    this.fileInfoContainer.removeClass('starcloud-hidden');
 
-    const infoDiv = this.fileInfoContainer.createDiv({ cls: 'nanobanana-selected-file' });
+    const infoDiv = this.fileInfoContainer.createDiv({ cls: 'starcloud-selected-file' });
     const icons: Record<ContentCategory, string> = { video: '🎬', audio: '🎵', document: '📄', image: '🖼️' };
     const icon = this.fileCategory ? icons[this.fileCategory] : '📄';
 
-    infoDiv.createEl('span', { text: icon, cls: 'nanobanana-file-icon' });
-    const details = infoDiv.createDiv({ cls: 'nanobanana-file-details' });
-    details.createEl('span', { text: file.name, cls: 'nanobanana-file-name' });
+    infoDiv.createEl('span', { text: icon, cls: 'starcloud-file-icon' });
+    const details = infoDiv.createDiv({ cls: 'starcloud-file-details' });
+    details.createEl('span', { text: file.name, cls: 'starcloud-file-name' });
     const categoryNames: Record<ContentCategory, string> = { video: '동영상', audio: '오디오', document: '문서', image: '이미지' };
     const categoryText = this.fileCategory ? categoryNames[this.fileCategory] : '파일';
-    details.createEl('span', { text: categoryText + ' • ' + formatFileSize(file.size), cls: 'nanobanana-file-meta' });
+    details.createEl('span', { text: categoryText + ' • ' + formatFileSize(file.size), cls: 'starcloud-file-meta' });
 
-    const clearBtn = infoDiv.createEl('button', { text: '✕', cls: 'nanobanana-btn-clear' });
+    const clearBtn = infoDiv.createEl('button', { text: '✕', cls: 'starcloud-btn-clear' });
     clearBtn.onclick = () => this.clearSelection();
   }
 
   private updateSizeOptions() {
     if (!this.sizeOptionsContainer || !this.fileCategory) return;
     this.sizeOptionsContainer.empty();
-    this.sizeOptionsContainer.removeClass('nanobanana-hidden');
-    this.sizeOptionsContainer.createEl('label', { text: '임베드 크기', cls: 'nanobanana-label' });
+    this.sizeOptionsContainer.removeClass('starcloud-hidden');
+    this.sizeOptionsContainer.createEl('label', { text: '임베드 크기', cls: 'starcloud-label' });
 
     const presets = getSizePresets(this.fileCategory);
     this.selectedSize = getRecommendedSize(this.fileCategory);
-    const optionsGrid = this.sizeOptionsContainer.createDiv({ cls: 'nanobanana-size-grid' });
+    const optionsGrid = this.sizeOptionsContainer.createDiv({ cls: 'starcloud-size-grid' });
 
     presets.forEach(preset => {
       const isSelected = this.selectedSize && this.selectedSize.id === preset.id;
       const option = optionsGrid.createDiv({
-        cls: 'nanobanana-size-option' + (preset.recommended ? ' nanobanana-recommended' : '') + (isSelected ? ' nanobanana-selected' : '')
+        cls: 'starcloud-size-option' + (preset.recommended ? ' starcloud-recommended' : '') + (isSelected ? ' starcloud-selected' : '')
       });
-      option.createEl('span', { text: preset.name, cls: 'nanobanana-size-name' });
-      option.createEl('span', { text: preset.width + ' × ' + preset.height, cls: 'nanobanana-size-dims' });
-      if (preset.recommended) option.createEl('span', { text: '추천', cls: 'nanobanana-badge' });
+      option.createEl('span', { text: preset.name, cls: 'starcloud-size-name' });
+      option.createEl('span', { text: preset.width + ' × ' + preset.height, cls: 'starcloud-size-dims' });
+      if (preset.recommended) option.createEl('span', { text: '추천', cls: 'starcloud-badge' });
 
       option.onclick = () => {
         this.selectedSize = preset;
-        optionsGrid.querySelectorAll('.nanobanana-size-option').forEach(el => el.removeClass('nanobanana-selected'));
-        option.addClass('nanobanana-selected');
+        optionsGrid.querySelectorAll('.starcloud-size-option').forEach(el => el.removeClass('starcloud-selected'));
+        option.addClass('starcloud-selected');
       };
     });
   }
 
   private createTitleToggle(container: HTMLElement) {
-    const toggleContainer = container.createDiv({ cls: 'nanobanana-title-toggle' });
-    const label = toggleContainer.createEl('label', { cls: 'nanobanana-toggle-label' });
+    const toggleContainer = container.createDiv({ cls: 'starcloud-title-toggle' });
+    const label = toggleContainer.createEl('label', { cls: 'starcloud-toggle-label' });
     label.createEl('span', { text: '파일명 표시' });
-    label.createEl('span', { text: '임베드 위에 파일명 표시', cls: 'nanobanana-toggle-desc' });
+    label.createEl('span', { text: '임베드 위에 파일명 표시', cls: 'starcloud-toggle-desc' });
     const toggle = toggleContainer.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
     toggle.checked = this.showTitle;
     toggle.onchange = () => { this.showTitle = toggle.checked; };
@@ -175,10 +175,10 @@ export class DriveUploadModal extends Modal {
 
   private createUploadButton() {
     if (!this.uploadButtonContainer) return;
-    const buttonRow = this.uploadButtonContainer.createDiv({ cls: 'nanobanana-button-row' });
-    const cancelBtn = buttonRow.createEl('button', { text: '취소', cls: 'nanobanana-btn nanobanana-btn-cancel' });
+    const buttonRow = this.uploadButtonContainer.createDiv({ cls: 'starcloud-button-row' });
+    const cancelBtn = buttonRow.createEl('button', { text: '취소', cls: 'starcloud-btn starcloud-btn-cancel' });
     cancelBtn.onclick = () => this.close();
-    const uploadBtn = buttonRow.createEl('button', { text: '☁️ 업로드 및 임베드', cls: 'nanobanana-btn nanobanana-btn-primary nanobanana-btn-upload' });
+    const uploadBtn = buttonRow.createEl('button', { text: '☁️ 업로드 및 임베드', cls: 'starcloud-btn starcloud-btn-primary starcloud-btn-upload' });
     uploadBtn.onclick = () => this.handleUpload();
   }
 
@@ -211,40 +211,40 @@ export class DriveUploadModal extends Modal {
   private showProgressUI() {
     if (!this.progressContainer) return;
     this.progressContainer.empty();
-    this.progressContainer.removeClass('nanobanana-hidden');
-    if (this.uploadButtonContainer) this.uploadButtonContainer.addClass('nanobanana-hidden');
-    this.progressContainer.createDiv({ cls: 'nanobanana-progress-spinner' });
-    this.progressContainer.createEl('p', { text: '업로드 준비 중...', cls: 'nanobanana-progress-message' });
-    const progressBar = this.progressContainer.createDiv({ cls: 'nanobanana-progress-bar' });
-    progressBar.createDiv({ cls: 'nanobanana-progress-fill' });
+    this.progressContainer.removeClass('starcloud-hidden');
+    if (this.uploadButtonContainer) this.uploadButtonContainer.addClass('starcloud-hidden');
+    this.progressContainer.createDiv({ cls: 'starcloud-progress-spinner' });
+    this.progressContainer.createEl('p', { text: '업로드 준비 중...', cls: 'starcloud-progress-message' });
+    const progressBar = this.progressContainer.createDiv({ cls: 'starcloud-progress-bar' });
+    progressBar.createDiv({ cls: 'starcloud-progress-fill' });
   }
 
   private updateProgressUI(progress: UploadProgress) {
     if (!this.progressContainer) return;
-    const message = this.progressContainer.querySelector('.nanobanana-progress-message');
+    const message = this.progressContainer.querySelector('.starcloud-progress-message');
     if (message) message.textContent = progress.message;
-    const fill = this.progressContainer.querySelector('.nanobanana-progress-fill') as HTMLElement;
+    const fill = this.progressContainer.querySelector('.starcloud-progress-fill') as HTMLElement;
     if (fill) fill.style.width = progress.progress + '%';
   }
 
   private hideProgressUI() {
-    if (this.progressContainer) this.progressContainer.addClass('nanobanana-hidden');
-    if (this.uploadButtonContainer) this.uploadButtonContainer.removeClass('nanobanana-hidden');
+    if (this.progressContainer) this.progressContainer.addClass('starcloud-hidden');
+    if (this.uploadButtonContainer) this.uploadButtonContainer.removeClass('starcloud-hidden');
   }
 
   private clearSelection() {
     this.selectedFile = null;
     this.selectedSize = null;
     this.fileCategory = null;
-    if (this.fileInfoContainer) this.fileInfoContainer.addClass('nanobanana-hidden');
-    if (this.sizeOptionsContainer) this.sizeOptionsContainer.addClass('nanobanana-hidden');
-    if (this.uploadButtonContainer) this.uploadButtonContainer.addClass('nanobanana-hidden');
+    if (this.fileInfoContainer) this.fileInfoContainer.addClass('starcloud-hidden');
+    if (this.sizeOptionsContainer) this.sizeOptionsContainer.addClass('starcloud-hidden');
+    if (this.uploadButtonContainer) this.uploadButtonContainer.addClass('starcloud-hidden');
   }
 
   private createSupportedFormatsSection(container: HTMLElement) {
-    const section = container.createEl('details', { cls: 'nanobanana-formats-section' });
+    const section = container.createEl('details', { cls: 'starcloud-formats-section' });
     section.createEl('summary', { text: '▶ 지원 파일 형식' });
-    const content = section.createDiv({ cls: 'nanobanana-formats-content' });
+    const content = section.createDiv({ cls: 'starcloud-formats-content' });
 
     const categories: { name: string; category: ContentCategory; icon: string }[] = [
       { name: '동영상', category: 'video', icon: '🎬' },
@@ -254,13 +254,13 @@ export class DriveUploadModal extends Modal {
     ];
 
     categories.forEach(({ name, category, icon }) => {
-      const row = content.createDiv({ cls: 'nanobanana-format-row' });
-      row.createEl('span', { text: icon + ' ' + name + ':', cls: 'nanobanana-format-label' });
+      const row = content.createDiv({ cls: 'starcloud-format-row' });
+      row.createEl('span', { text: icon + ' ' + name + ':', cls: 'starcloud-format-label' });
       const exts = getAllSupportedExtensions().filter(ext => {
         const info = getFileTypeInfo('test.' + ext);
         return info && info.category === category;
       }).map(ext => '.' + ext).join(', ');
-      row.createEl('span', { text: exts, cls: 'nanobanana-format-exts' });
+      row.createEl('span', { text: exts, cls: 'starcloud-format-exts' });
     });
   }
 

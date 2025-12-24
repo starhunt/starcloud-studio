@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**NanoBanana Cloud** - Obsidian plugin for AI-powered content generation and Google Drive integration.
+**StarCloud Studio** - Obsidian plugin for AI-powered content generation and Google Drive integration.
 
 ### Main Features
 

@@ -76,7 +76,7 @@ export class SpeechOptionsModal extends Modal {
   async onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-speech-options');
+    contentEl.addClass('starcloud-speech-options');
 
     // Add styles
     this.addStyles();
@@ -527,50 +527,50 @@ export class SpeechOptionsModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-speech-options {
+      .starcloud-speech-options {
         width: 620px;
         max-width: 95vw;
         padding: 16px 20px;
       }
 
-      .nanobanana-speech-options .modal-title {
+      .starcloud-speech-options .modal-title {
         margin: 0 0 14px 0;
         font-size: 1.3em;
       }
 
-      .nanobanana-speech-options .accent-text {
+      .starcloud-speech-options .accent-text {
         color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .section {
+      .starcloud-speech-options .section {
         margin-bottom: 12px;
       }
 
-      .nanobanana-speech-options .section-label {
+      .starcloud-speech-options .section-label {
         font-weight: 600;
         margin-bottom: 8px;
         display: block;
         font-size: 13px;
       }
 
-      .nanobanana-speech-options .row-label {
+      .starcloud-speech-options .row-label {
         font-weight: 600;
         font-size: 13px;
       }
 
-      .nanobanana-speech-options .source-row {
+      .starcloud-speech-options .source-row {
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 10px;
       }
 
-      .nanobanana-speech-options .source-buttons {
+      .starcloud-speech-options .source-buttons {
         display: flex;
         gap: 6px;
       }
 
-      .nanobanana-speech-options .source-btn {
+      .starcloud-speech-options .source-btn {
         padding: 5px 12px;
         border-radius: 14px;
         border: 1px solid var(--background-modifier-border);
@@ -580,21 +580,21 @@ export class SpeechOptionsModal extends Modal {
         transition: all 0.15s ease;
       }
 
-      .nanobanana-speech-options .source-btn:hover {
+      .starcloud-speech-options .source-btn:hover {
         background: var(--background-modifier-hover);
       }
 
-      .nanobanana-speech-options .source-btn.active {
+      .starcloud-speech-options .source-btn.active {
         background: var(--interactive-accent);
         color: var(--text-on-accent);
         border-color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .content-preview-container {
+      .starcloud-speech-options .content-preview-container {
         position: relative;
       }
 
-      .nanobanana-speech-options .content-preview {
+      .starcloud-speech-options .content-preview {
         width: 100%;
         min-height: 50px;
         max-height: 80px;
@@ -610,17 +610,17 @@ export class SpeechOptionsModal extends Modal {
         overflow-y: auto;
       }
 
-      .nanobanana-speech-options .content-preview:focus {
+      .starcloud-speech-options .content-preview:focus {
         outline: none;
         border-color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .content-preview[readonly] {
+      .starcloud-speech-options .content-preview[readonly] {
         background: var(--background-secondary);
         color: var(--text-muted);
       }
 
-      .nanobanana-speech-options .char-count {
+      .starcloud-speech-options .char-count {
         text-align: right;
         font-size: 11px;
         color: var(--text-muted);
@@ -628,14 +628,14 @@ export class SpeechOptionsModal extends Modal {
       }
 
       /* Template Buttons */
-      .nanobanana-speech-options .template-buttons {
+      .starcloud-speech-options .template-buttons {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         margin-top: 8px;
       }
 
-      .nanobanana-speech-options .template-btn {
+      .starcloud-speech-options .template-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -647,17 +647,17 @@ export class SpeechOptionsModal extends Modal {
         transition: all 0.15s ease;
       }
 
-      .nanobanana-speech-options .template-btn:hover {
+      .starcloud-speech-options .template-btn:hover {
         border-color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .template-btn.active {
+      .starcloud-speech-options .template-btn.active {
         background: var(--interactive-accent);
         border-color: var(--interactive-accent);
         color: var(--text-on-accent);
       }
 
-      .nanobanana-speech-options .template-icon {
+      .starcloud-speech-options .template-icon {
         font-size: 14px;
         line-height: 1;
         display: inline-flex;
@@ -669,7 +669,7 @@ export class SpeechOptionsModal extends Modal {
         margin: 0 !important;
       }
 
-      .nanobanana-speech-options .template-label {
+      .starcloud-speech-options .template-label {
         font-size: 13px;
         line-height: 1;
         display: inline-flex;
@@ -678,17 +678,17 @@ export class SpeechOptionsModal extends Modal {
       }
 
       /* Prompt Preview Section */
-      .nanobanana-speech-options .prompt-section {
+      .starcloud-speech-options .prompt-section {
         margin-top: 12px;
       }
 
-      .nanobanana-speech-options .prompt-tabs {
+      .starcloud-speech-options .prompt-tabs {
         display: flex;
         border-bottom: 1px solid var(--background-modifier-border);
         margin-bottom: 0;
       }
 
-      .nanobanana-speech-options .prompt-tab-btn {
+      .starcloud-speech-options .prompt-tab-btn {
         padding: 8px 16px;
         border: none;
         background: transparent;
@@ -700,16 +700,16 @@ export class SpeechOptionsModal extends Modal {
         transition: all 0.15s ease;
       }
 
-      .nanobanana-speech-options .prompt-tab-btn:hover {
+      .starcloud-speech-options .prompt-tab-btn:hover {
         color: var(--text-normal);
       }
 
-      .nanobanana-speech-options .prompt-tab-btn.active {
+      .starcloud-speech-options .prompt-tab-btn.active {
         color: var(--interactive-accent);
         border-bottom-color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .prompt-preview-container {
+      .starcloud-speech-options .prompt-preview-container {
         background: var(--background-secondary);
         border: 1px solid var(--background-modifier-border);
         border-top: none;
@@ -719,25 +719,25 @@ export class SpeechOptionsModal extends Modal {
         overflow-y: auto;
       }
 
-      .nanobanana-speech-options .prompt-preview-box {
+      .starcloud-speech-options .prompt-preview-box {
         padding: 10px;
       }
 
-      .nanobanana-speech-options .prompt-title {
+      .starcloud-speech-options .prompt-title {
         font-weight: 600;
         margin-bottom: 6px;
         color: var(--text-normal);
         font-size: 13px;
       }
 
-      .nanobanana-speech-options .prompt-content {
+      .starcloud-speech-options .prompt-content {
         font-size: 12px;
         color: var(--text-muted);
         line-height: 1.4;
         white-space: pre-wrap;
       }
 
-      .nanobanana-speech-options .custom-prompt-editor {
+      .starcloud-speech-options .custom-prompt-editor {
         width: 100%;
         min-height: 70px;
         max-height: 100px;
@@ -751,16 +751,16 @@ export class SpeechOptionsModal extends Modal {
         color: var(--text-normal);
       }
 
-      .nanobanana-speech-options .custom-prompt-editor:focus {
+      .starcloud-speech-options .custom-prompt-editor:focus {
         outline: none;
       }
 
       /* Compact Settings */
-      .nanobanana-speech-options .compact-settings {
+      .starcloud-speech-options .compact-settings {
         margin-top: 12px;
       }
 
-      .nanobanana-speech-options .settings-row {
+      .starcloud-speech-options .settings-row {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
@@ -768,19 +768,19 @@ export class SpeechOptionsModal extends Modal {
         align-items: center;
       }
 
-      .nanobanana-speech-options .setting-group {
+      .starcloud-speech-options .setting-group {
         display: flex;
         align-items: center;
         gap: 8px;
       }
 
-      .nanobanana-speech-options .setting-label {
+      .starcloud-speech-options .setting-label {
         font-size: 13px;
         color: var(--text-normal);
         white-space: nowrap;
       }
 
-      .nanobanana-speech-options .setting-select {
+      .starcloud-speech-options .setting-select {
         padding: 4px 8px;
         border-radius: 4px;
         border: 1px solid var(--background-modifier-border);
@@ -790,7 +790,7 @@ export class SpeechOptionsModal extends Modal {
         min-width: 100px;
       }
 
-      .nanobanana-speech-options .setting-input {
+      .starcloud-speech-options .setting-input {
         padding: 4px 8px;
         border-radius: 4px;
         border: 1px solid var(--background-modifier-border);
@@ -800,41 +800,41 @@ export class SpeechOptionsModal extends Modal {
         width: 120px;
       }
 
-      .nanobanana-speech-options .duration-group {
+      .starcloud-speech-options .duration-group {
         flex: 1;
         min-width: 200px;
       }
 
-      .nanobanana-speech-options .duration-slider {
+      .starcloud-speech-options .duration-slider {
         flex: 1;
         min-width: 100px;
         margin: 0 8px;
       }
 
-      .nanobanana-speech-options .duration-value {
+      .starcloud-speech-options .duration-value {
         font-size: 13px;
         color: var(--text-accent);
         min-width: 35px;
       }
 
-      .nanobanana-speech-options .voice-group {
+      .starcloud-speech-options .voice-group {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
       }
 
-      .nanobanana-speech-options .toggle-group {
+      .starcloud-speech-options .toggle-group {
         gap: 10px;
       }
 
-      .nanobanana-speech-options .setting-toggle {
+      .starcloud-speech-options .setting-toggle {
         width: 16px;
         height: 16px;
         cursor: pointer;
         accent-color: var(--interactive-accent);
       }
 
-      .nanobanana-speech-options .modal-button-container {
+      .starcloud-speech-options .modal-button-container {
         display: flex;
         justify-content: flex-end;
         gap: 10px;
@@ -843,26 +843,26 @@ export class SpeechOptionsModal extends Modal {
         border-top: 1px solid var(--background-modifier-border);
       }
 
-      .nanobanana-speech-options .btn-cancel,
-      .nanobanana-speech-options .btn-primary {
+      .starcloud-speech-options .btn-cancel,
+      .starcloud-speech-options .btn-primary {
         padding: 7px 18px;
         border-radius: 6px;
         font-size: 13px;
         cursor: pointer;
       }
 
-      .nanobanana-speech-options .btn-cancel {
+      .starcloud-speech-options .btn-cancel {
         background: var(--background-secondary);
         border: 1px solid var(--background-modifier-border);
       }
 
-      .nanobanana-speech-options .btn-primary {
+      .starcloud-speech-options .btn-primary {
         background: var(--interactive-accent);
         color: var(--text-on-accent);
         border: none;
       }
 
-      .nanobanana-speech-options .btn-primary:hover {
+      .starcloud-speech-options .btn-primary:hover {
         background: var(--interactive-accent-hover);
       }
     `;

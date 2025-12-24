@@ -74,7 +74,7 @@ export class ProgressModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-progress-modal');
+    contentEl.addClass('starcloud-progress-modal');
 
     const title = this.mode === 'speech' ? '🎤 오디오 생성 중' :
                   this.mode === 'pptx' ? '📊 PPTX 생성 중' :
@@ -215,7 +215,7 @@ export class ProgressModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-progress-modal {
+      .starcloud-progress-modal {
         padding: 20px;
         width: 400px;
         max-width: 90vw;

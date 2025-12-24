@@ -211,7 +211,7 @@ export interface EmbedOptions {
 // Settings Interface
 // ============================================================
 
-export interface NanoBananaCloudSettings {
+export interface StarCloudStudioSettings {
   // AI API Keys
   googleApiKey: string;
   openaiApiKey: string;

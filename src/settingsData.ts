@@ -1,6 +1,6 @@
-import { NanoBananaCloudSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, PptxGenerationStyle, SpeechTemplate } from './types';
+import { StarCloudStudioSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, PptxGenerationStyle, SpeechTemplate } from './types';
 
-export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
+export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   // AI API Keys
   googleApiKey: '',
   openaiApiKey: '',
@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: NanoBananaCloudSettings = {
   customCartoonCuts: 4,
 
   // Google Drive
-  driveFolder: 'Obsidian/NanoBananaCloud',
+  driveFolder: 'Obsidian/StarCloudStudio',
   organizeFoldersByDate: true,
 
   // Embedding

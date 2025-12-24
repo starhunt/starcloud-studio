@@ -1,4 +1,4 @@
-# NanoBanana Cloud
+# StarCloud Studio
 
 AI-powered Knowledge Poster generator for Obsidian with Google Drive integration.
 
@@ -18,8 +18,8 @@ AI-powered Knowledge Poster generator for Obsidian with Google Drive integration
 
 ### From Release (Recommended)
 
-1. Download `main.js` and `manifest.json` from [Releases](https://github.com/starhunt/nanobanana-cloud/releases)
-2. Create folder: `<vault>/.obsidian/plugins/nanobanana-cloud/`
+1. Download `main.js` and `manifest.json` from [Releases](https://github.com/starhunt/starcloud-studio/releases)
+2. Create folder: `<vault>/.obsidian/plugins/starcloud-studio/`
 3. Copy downloaded files to the folder
 4. Enable plugin in Obsidian Settings → Community Plugins
 
@@ -27,14 +27,14 @@ AI-powered Knowledge Poster generator for Obsidian with Google Drive integration
 
 1. Build the plugin:
    ```bash
-   cd nanobanana-cloud
+   cd starcloud-studio
    npm install
    npm run build
    ```
 
 2. Copy to your Obsidian vault:
    ```bash
-   cp main.js manifest.json /path/to/vault/.obsidian/plugins/nanobanana-cloud/
+   cp main.js manifest.json /path/to/vault/.obsidian/plugins/starcloud-studio/
    ```
 
 3. Enable the plugin in Obsidian Settings → Community Plugins
@@ -108,7 +108,7 @@ AI-powered Knowledge Poster generator for Obsidian with Google Drive integration
 
 When `Organize by Date` is enabled (default):
 ```
-Obsidian/NanoBananaCloud/
+Obsidian/StarCloudStudio/
 └── 2025/
     └── 12/
         └── note-name-poster-xxx.png
@@ -141,7 +141,7 @@ npm run build
 ## Project Structure
 
 ```
-nanobanana-cloud/
+starcloud-studio/
 ├── src/
 │   ├── main.ts              # Plugin entry point
 │   ├── settings.ts          # Settings tab UI
@@ -174,15 +174,6 @@ nanobanana-cloud/
 
 ### v1.0.0
 - Initial release
-
-## Acknowledgments
-
-This project was built by combining and extending features from the following open-source projects:
-
-- [NanoBanana PRO Obsidian](https://github.com/reallygood83/nanobanana-pro-obsidian) - AI-powered Knowledge Poster generator
-- [Obsidian Embedder](https://github.com/reallygood83/obsidian-embedder) - Google Drive file uploader with embed code generation
-
-Thank you to the original authors for their excellent work!
 
 ## License
 

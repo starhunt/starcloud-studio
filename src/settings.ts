@@ -1,5 +1,5 @@
 import { App, Modal, PluginSettingTab, Setting, Notice } from 'obsidian';
-import type NanoBananaCloudPlugin from './main';
+import type StarCloudStudioPlugin from './main';
 import {
   AIProvider,
   PROVIDER_CONFIGS,
@@ -42,12 +42,12 @@ const SETTINGS_TABS: TabConfig[] = [
   { id: 'advanced', name: '고급', icon: '🔧' }
 ];
 
-export class NanoBananaCloudSettingTab extends PluginSettingTab {
-  plugin: NanoBananaCloudPlugin;
+export class StarCloudStudioSettingTab extends PluginSettingTab {
+  plugin: StarCloudStudioPlugin;
   private activeTab: SettingsTab = 'general';
   private contentEl: HTMLElement | null = null;
 
-  constructor(app: App, plugin: NanoBananaCloudPlugin) {
+  constructor(app: App, plugin: StarCloudStudioPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -55,7 +55,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.addClass('nanobanana-settings');
+    containerEl.addClass('starcloud-settings');
 
     // Add tab styles
     this.addTabStyles(containerEl);
@@ -76,11 +76,11 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
   private addTabStyles(containerEl: HTMLElement) {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-settings {
+      .starcloud-settings {
         padding: 0 !important;
       }
 
-      .nanobanana-settings .settings-header {
+      .starcloud-settings .settings-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -88,24 +88,24 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         border-bottom: 1px solid var(--background-modifier-border);
       }
 
-      .nanobanana-settings .settings-title {
+      .starcloud-settings .settings-title {
         display: flex;
         align-items: baseline;
         gap: 10px;
       }
 
-      .nanobanana-settings .settings-title h2 {
+      .starcloud-settings .settings-title h2 {
         margin: 0;
         font-size: 1.5em;
         color: var(--text-accent);
       }
 
-      .nanobanana-settings .settings-title .version {
+      .starcloud-settings .settings-title .version {
         font-size: 0.9em;
         color: var(--text-muted);
       }
 
-      .nanobanana-settings .settings-tab-nav {
+      .starcloud-settings .settings-tab-nav {
         display: flex;
         gap: 4px;
         padding: 12px 20px;
@@ -114,7 +114,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         flex-wrap: wrap;
       }
 
-      .nanobanana-settings .settings-tab-btn {
+      .starcloud-settings .settings-tab-btn {
         padding: 8px 16px;
         border: none;
         border-radius: 6px;
@@ -129,62 +129,62 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         gap: 6px;
       }
 
-      .nanobanana-settings .settings-tab-btn:hover {
+      .starcloud-settings .settings-tab-btn:hover {
         background: var(--background-modifier-hover);
         color: var(--text-normal);
       }
 
-      .nanobanana-settings .settings-tab-btn.active {
+      .starcloud-settings .settings-tab-btn.active {
         background: var(--interactive-accent);
         color: var(--text-on-accent);
       }
 
-      .nanobanana-settings .settings-tab-btn .tab-icon {
+      .starcloud-settings .settings-tab-btn .tab-icon {
         font-size: 14px;
       }
 
-      .nanobanana-settings .settings-tab-content {
+      .starcloud-settings .settings-tab-content {
         padding: 20px;
         max-height: calc(100vh - 200px);
         overflow-y: auto;
       }
 
-      .nanobanana-settings .setting-item {
+      .starcloud-settings .setting-item {
         border-bottom: 1px solid var(--background-modifier-border);
         padding: 16px 0;
       }
 
-      .nanobanana-settings .setting-item:last-child {
+      .starcloud-settings .setting-item:last-child {
         border-bottom: none;
       }
 
-      .nanobanana-settings .setting-item-heading {
+      .starcloud-settings .setting-item-heading {
         border-bottom: none;
         padding-bottom: 8px;
       }
 
-      .nanobanana-settings .setting-item-heading .setting-item-name {
+      .starcloud-settings .setting-item-heading .setting-item-name {
         font-size: 1.1em;
         font-weight: 600;
         color: var(--text-accent);
       }
 
-      .nanobanana-settings .connection-status {
+      .starcloud-settings .connection-status {
         margin: 12px 0;
         padding: 10px 14px;
         border-radius: 6px;
         background: var(--background-secondary);
       }
 
-      .nanobanana-settings .status-connected {
+      .starcloud-settings .status-connected {
         color: var(--text-success);
       }
 
-      .nanobanana-settings .status-disconnected {
+      .starcloud-settings .status-disconnected {
         color: var(--text-error);
       }
 
-      .nanobanana-settings .reset-btn {
+      .starcloud-settings .reset-btn {
         padding: 6px 12px;
         border-radius: 4px;
         background: var(--background-modifier-error);
@@ -194,7 +194,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
         font-size: 13px;
       }
 
-      .nanobanana-settings .reset-btn:hover {
+      .starcloud-settings .reset-btn:hover {
         background: var(--background-modifier-error-hover);
       }
     `;
@@ -205,7 +205,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
     const header = containerEl.createDiv({ cls: 'settings-header' });
 
     const titleDiv = header.createDiv({ cls: 'settings-title' });
-    titleDiv.createEl('h2', { text: 'NanoBanana Cloud Settings' });
+    titleDiv.createEl('h2', { text: 'StarCloud Studio Settings' });
     titleDiv.createSpan({ cls: 'version', text: `v${this.plugin.manifest.version}` });
 
     const resetBtn = header.createEl('button', {
@@ -311,7 +311,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
   }
 
   private createDriveConnectionSection(containerEl: HTMLElement) {
-    const connectionDiv = containerEl.createDiv({ cls: 'nanobanana-connection-section' });
+    const connectionDiv = containerEl.createDiv({ cls: 'starcloud-connection-section' });
 
     new Setting(connectionDiv)
       .setName('Google Drive 연결')
@@ -622,7 +622,7 @@ export class NanoBananaCloudSettingTab extends PluginSettingTab {
       .setName('업로드 폴더')
       .setDesc('Google Drive 내 기본 폴더 경로')
       .addText(text => text
-        .setPlaceholder('Obsidian/NanoBananaCloud')
+        .setPlaceholder('Obsidian/StarCloudStudio')
         .setValue(this.plugin.settings.driveFolder)
         .onChange(async (value) => {
           this.plugin.settings.driveFolder = value;
@@ -1187,20 +1187,20 @@ class SystemPromptViewModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-prompt-view-modal');
+    contentEl.addClass('starcloud-prompt-view-modal');
 
     // Add styles
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-prompt-view-modal {
+      .starcloud-prompt-view-modal {
         width: 700px;
         max-width: 90vw;
       }
-      .nanobanana-prompt-view-modal .prompt-textarea-container {
+      .starcloud-prompt-view-modal .prompt-textarea-container {
         width: 100%;
         margin: 16px 0;
       }
-      .nanobanana-prompt-view-modal textarea {
+      .starcloud-prompt-view-modal textarea {
         width: 100%;
         min-height: 400px;
         max-height: 60vh;

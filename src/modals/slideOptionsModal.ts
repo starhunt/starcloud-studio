@@ -38,17 +38,17 @@ export class SlideOptionsModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-slide-options');
+    contentEl.addClass('starcloud-slide-options');
 
     // Title
     contentEl.createEl('h2', {
       text: this.getMessage('slideOptionsTitle'),
-      cls: 'nanobanana-modal-title'
+      cls: 'starcloud-modal-title'
     });
 
     contentEl.createEl('p', {
       text: this.getMessage('slideOptionsDesc'),
-      cls: 'nanobanana-modal-desc'
+      cls: 'starcloud-modal-desc'
     });
 
     // Input Source Selection
@@ -68,7 +68,7 @@ export class SlideOptionsModal extends Modal {
       );
 
     // Custom Text Container (hidden by default)
-    this.customTextContainer = contentEl.createDiv({ cls: 'nanobanana-custom-text-container' });
+    this.customTextContainer = contentEl.createDiv({ cls: 'starcloud-custom-text-container' });
     this.updateCustomTextVisibility();
 
     // Output Format Selection
@@ -90,7 +90,7 @@ export class SlideOptionsModal extends Modal {
       );
 
     // PPTX Generation Style Container (only visible when PPTX is selected)
-    this.pptxStyleContainer = contentEl.createDiv({ cls: 'nanobanana-pptx-style-container' });
+    this.pptxStyleContainer = contentEl.createDiv({ cls: 'starcloud-pptx-style-container' });
     this.updatePptxStyleVisibility();
 
     // Prompt Type Selection
@@ -121,16 +121,16 @@ export class SlideOptionsModal extends Modal {
       });
 
     // System Prompt Preview/Edit Section
-    this.promptPreviewContainer = contentEl.createDiv({ cls: 'nanobanana-prompt-preview-container' });
+    this.promptPreviewContainer = contentEl.createDiv({ cls: 'starcloud-prompt-preview-container' });
     this.updatePromptPreview();
 
     // Buttons container
-    const buttonContainer = contentEl.createDiv({ cls: 'nanobanana-button-container' });
+    const buttonContainer = contentEl.createDiv({ cls: 'starcloud-button-container' });
 
     // Cancel button
     const cancelBtn = buttonContainer.createEl('button', {
       text: this.getMessage('cancel'),
-      cls: 'nanobanana-btn nanobanana-btn-cancel'
+      cls: 'starcloud-btn starcloud-btn-cancel'
     });
     cancelBtn.onclick = () => {
       this.onSubmit({
@@ -148,7 +148,7 @@ export class SlideOptionsModal extends Modal {
     // Generate button
     const generateBtn = buttonContainer.createEl('button', {
       text: this.getMessage('generateSlide'),
-      cls: 'nanobanana-btn nanobanana-btn-primary'
+      cls: 'starcloud-btn starcloud-btn-primary'
     });
     generateBtn.onclick = () => {
       this.onSubmit({
@@ -169,17 +169,17 @@ export class SlideOptionsModal extends Modal {
     this.customTextContainer.empty();
 
     if (this.selectedInputSource === 'custom-text') {
-      this.customTextContainer.removeClass('nanobanana-hidden');
+      this.customTextContainer.removeClass('starcloud-hidden');
 
       // Create label
       this.customTextContainer.createEl('label', {
         text: this.getMessage('customTextLabel'),
-        cls: 'nanobanana-label'
+        cls: 'starcloud-label'
       });
 
       // Create textarea
       const textarea = this.customTextContainer.createEl('textarea', {
-        cls: 'nanobanana-custom-text-textarea',
+        cls: 'starcloud-custom-text-textarea',
         placeholder: this.getMessage('customTextPlaceholder')
       });
       textarea.value = this.customText;
@@ -188,7 +188,7 @@ export class SlideOptionsModal extends Modal {
         this.customText = textarea.value;
       });
     } else {
-      this.customTextContainer.addClass('nanobanana-hidden');
+      this.customTextContainer.addClass('starcloud-hidden');
     }
   }
 
@@ -197,7 +197,7 @@ export class SlideOptionsModal extends Modal {
     this.pptxStyleContainer.empty();
 
     if (this.selectedOutputFormat === 'pptx') {
-      this.pptxStyleContainer.removeClass('nanobanana-hidden');
+      this.pptxStyleContainer.removeClass('starcloud-hidden');
 
       new Setting(this.pptxStyleContainer)
         .setName(this.getMessage('pptxStyleLabel'))
@@ -215,7 +215,7 @@ export class SlideOptionsModal extends Modal {
           })
         );
     } else {
-      this.pptxStyleContainer.addClass('nanobanana-hidden');
+      this.pptxStyleContainer.addClass('starcloud-hidden');
     }
   }
 
@@ -226,25 +226,25 @@ export class SlideOptionsModal extends Modal {
     const currentConfig = this.getBasePromptConfig();
 
     // Collapsible header
-    const header = this.promptPreviewContainer.createDiv({ cls: 'nanobanana-prompt-header' });
+    const header = this.promptPreviewContainer.createDiv({ cls: 'starcloud-prompt-header' });
     const toggleBtn = header.createEl('button', {
       text: this.getMessage('viewSystemPrompt'),
-      cls: 'nanobanana-btn nanobanana-btn-small'
+      cls: 'starcloud-btn starcloud-btn-small'
     });
 
     const contentDiv = this.promptPreviewContainer.createDiv({
-      cls: 'nanobanana-prompt-content nanobanana-hidden'
+      cls: 'starcloud-prompt-content starcloud-hidden'
     });
 
     // Prompt description
     contentDiv.createEl('p', {
       text: currentConfig.description,
-      cls: 'nanobanana-prompt-desc'
+      cls: 'starcloud-prompt-desc'
     });
 
     // Editable textarea with proper styling
     const textarea = contentDiv.createEl('textarea', {
-      cls: 'nanobanana-prompt-textarea'
+      cls: 'starcloud-prompt-textarea'
     });
     textarea.value = this.isPromptEdited ? this.editedPrompt : currentConfig.prompt;
     textarea.style.cssText = `
@@ -271,7 +271,7 @@ export class SlideOptionsModal extends Modal {
     // Reset button
     const resetBtn = contentDiv.createEl('button', {
       text: this.getMessage('resetPrompt'),
-      cls: 'nanobanana-btn nanobanana-btn-small nanobanana-btn-reset'
+      cls: 'starcloud-btn starcloud-btn-small starcloud-btn-reset'
     });
     resetBtn.onclick = () => {
       this.isPromptEdited = false;
@@ -281,8 +281,8 @@ export class SlideOptionsModal extends Modal {
 
     // Toggle visibility
     toggleBtn.onclick = () => {
-      contentDiv.toggleClass('nanobanana-hidden', !contentDiv.hasClass('nanobanana-hidden'));
-      toggleBtn.setText(contentDiv.hasClass('nanobanana-hidden')
+      contentDiv.toggleClass('starcloud-hidden', !contentDiv.hasClass('starcloud-hidden'));
+      toggleBtn.setText(contentDiv.hasClass('starcloud-hidden')
         ? this.getMessage('viewSystemPrompt')
         : this.getMessage('hideSystemPrompt'));
     };

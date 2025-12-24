@@ -8,7 +8,7 @@ import {
   INFOGRAPHIC_SUB_STYLES,
   ImageSize,
   CartoonCuts,
-  NanoBananaCloudSettings
+  StarCloudStudioSettings
 } from '../types';
 
 export class QuickOptionsModal extends Modal {
@@ -19,7 +19,7 @@ export class QuickOptionsModal extends Modal {
 
   constructor(
     app: App,
-    settings: NanoBananaCloudSettings,
+    settings: StarCloudStudioSettings,
     hasSelection: boolean,
     onSubmit: (result: QuickOptionsResult) => void
   ) {
@@ -41,7 +41,7 @@ export class QuickOptionsModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-quick-options-modal');
+    contentEl.addClass('starcloud-quick-options-modal');
 
     contentEl.createEl('h2', { text: '🎨 포스터 생성 옵션' });
 
@@ -353,7 +353,7 @@ export class QuickOptionsModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-quick-options-modal {
+      .starcloud-quick-options-modal {
         padding: 20px;
         max-width: 500px;
       }

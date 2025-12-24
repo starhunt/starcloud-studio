@@ -1,5 +1,5 @@
 {
-  "name": "nanobanana-cloud",
+  "name": "starcloud-studio",
   "version": "1.0.27",
   "description": "Generate AI-powered Knowledge Posters from Obsidian notes and upload to Google Drive",
   "main": "main.js",
@@ -20,7 +20,7 @@
     "anthropic",
     "glm"
   ],
-  "author": "NanoBanana",
+  "author": "StarHunt",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^16.11.6",

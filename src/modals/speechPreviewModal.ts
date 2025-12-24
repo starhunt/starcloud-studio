@@ -33,7 +33,7 @@ export class SpeechPreviewModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-speech-preview-modal');
+    contentEl.addClass('starcloud-speech-preview-modal');
 
     const templateConfig = SPEECH_TEMPLATE_CONFIGS[this.template];
 
@@ -151,7 +151,7 @@ export class SpeechPreviewModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-speech-preview-modal {
+      .starcloud-speech-preview-modal {
         padding: 20px;
         width: 700px;
         max-width: 90vw;

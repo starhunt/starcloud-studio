@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Notice, Plugin, TFile } from 'obsidian';
 import {
-  NanoBananaCloudSettings,
+  StarCloudStudioSettings,
   QuickOptionsResult,
   PreviewModalResult,
   SlideOptionsResult,
@@ -17,7 +17,7 @@ import {
   DialogueSegment
 } from './types';
 import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
-import { NanoBananaCloudSettingTab } from './settings';
+import { StarCloudStudioSettingTab } from './settings';
 import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
 import { SlideService } from './services/slideService';
@@ -38,8 +38,8 @@ import { DriveUploadModal, DriveUploadModalResult } from './modals/driveUploadMo
 import { SpeechOptionsModal } from './modals/speechOptionsModal';
 import { SpeechPreviewModal } from './modals/speechPreviewModal';
 
-export default class NanoBananaCloudPlugin extends Plugin {
-  settings: NanoBananaCloudSettings;
+export default class StarCloudStudioPlugin extends Plugin {
+  settings: StarCloudStudioSettings;
 
   // Services
   private promptService: PromptService;
@@ -76,7 +76,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
     }
 
     // Add settings tab
-    this.addSettingTab(new NanoBananaCloudSettingTab(this.app, this));
+    this.addSettingTab(new StarCloudStudioSettingTab(this.app, this));
 
     // Register commands
     this.addCommand({
@@ -137,11 +137,11 @@ export default class NanoBananaCloudPlugin extends Plugin {
       }
     });
 
-    console.log('NanoBanana Cloud plugin loaded');
+    console.log('StarCloud Studio plugin loaded');
   }
 
   onunload() {
-    console.log('NanoBanana Cloud plugin unloaded');
+    console.log('StarCloud Studio plugin unloaded');
   }
 
   async loadSettings() {
@@ -910,7 +910,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
         pptxResult.pptxBuffer,
         mimeType,
         fileName,
-        this.settings.driveFolder || 'NanoBanana',
+        this.settings.driveFolder || 'StarCloudStudio',
         this.settings.organizeFoldersByDate,
         (progress) => {
           progressModal?.updateProgress({
@@ -1015,7 +1015,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
     const modal = new DriveUploadModal(
       this.app,
       this.driveUploadService,
-      this.settings.driveFolder || 'NanoBanana',
+      this.settings.driveFolder || 'StarCloudStudio',
       this.settings.organizeFoldersByDate !== false,
       this.settings.showTitleInEmbed !== false,
       (result: DriveUploadModalResult) => {
@@ -1260,7 +1260,7 @@ export default class NanoBananaCloudPlugin extends Plugin {
           audioResult.audioData,
           audioResult.mimeType,
           fileName,
-          this.settings.driveFolder || 'NanoBanana',
+          this.settings.driveFolder || 'StarCloudStudio',
           this.settings.organizeFoldersByDate,
           (progress) => {
             progressModal?.updateProgress({

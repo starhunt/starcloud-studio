@@ -24,7 +24,7 @@ export class PreviewModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('nanobanana-preview-modal');
+    contentEl.addClass('starcloud-preview-modal');
 
     contentEl.createEl('h2', { text: '📝 프롬프트 미리보기' });
 
@@ -101,7 +101,7 @@ export class PreviewModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
-      .nanobanana-preview-modal {
+      .starcloud-preview-modal {
         padding: 20px;
         width: 600px;
         max-width: 90vw;

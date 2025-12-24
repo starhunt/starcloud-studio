@@ -89,9 +89,9 @@ export class PptxService {
 
     // Set presentation properties
     pres.title = data.title;
-    pres.author = data.author || 'NanoBanana Cloud';
+    pres.author = data.author || 'StarCloud Studio';
     pres.subject = data.subject || 'Educational Presentation';
-    pres.company = 'NanoBanana Cloud';
+    pres.company = 'StarCloud Studio';
 
     // Set 16:9 layout
     pres.defineLayout({ name: 'CUSTOM', width: 13.33, height: 7.5 });
@@ -1736,9 +1736,9 @@ export class PptxService {
 
     // Set presentation properties
     pres.title = data.title;
-    pres.author = data.author || 'NanoBanana Cloud';
+    pres.author = data.author || 'StarCloud Studio';
     pres.subject = 'Educational Presentation';
-    pres.company = 'NanoBanana Cloud';
+    pres.company = 'StarCloud Studio';
 
     // Set 16:9 layout
     pres.defineLayout({ name: 'CUSTOM', width: 13.33, height: 7.5 });
