@@ -39,8 +39,10 @@ export class SpeechOptionsModal extends Modal {
   private templateButtonsContainer: HTMLElement | null = null;
   private promptPreviewContainer: HTMLElement | null = null;
   private voiceSelectionContainer: HTMLElement | null = null;
+  private durationSliderEl: HTMLInputElement | null = null;
+  private durationValueEl: HTMLElement | null = null;
   private inputSourceButtons: Map<InputSource, HTMLElement> = new Map();
-  private templateButtons: Map<SpeechTemplate | 'custom', HTMLElement> = new Map();
+  private templateButtons: Map<SpeechTemplate, HTMLElement> = new Map();
   private promptTabButtons: Map<PromptMode, HTMLElement> = new Map();
 
   constructor(
@@ -90,7 +92,7 @@ export class SpeechOptionsModal extends Modal {
 
     // Input Source Label and Buttons
     const sourceRow = contentSection.createDiv({ cls: 'source-row' });
-    sourceRow.createEl('span', { text: 'Content:', cls: 'section-label' });
+    sourceRow.createEl('span', { text: 'Content:', cls: 'row-label' });
 
     const sourceButtonsContainer = sourceRow.createDiv({ cls: 'source-buttons' });
 
@@ -161,66 +163,75 @@ export class SpeechOptionsModal extends Modal {
     this.promptPreviewContainer = promptSection.createDiv({ cls: 'prompt-preview-container' });
     this.updatePromptPreview();
 
-    // ===== Settings Section =====
-    const settingsSection = contentEl.createDiv({ cls: 'section settings-section' });
+    // ===== Compact Settings Section =====
+    const settingsSection = contentEl.createDiv({ cls: 'section compact-settings' });
 
-    // Duration slider
-    const durationConfig = SPEECH_TEMPLATE_CONFIGS[this.selectedTemplate].targetDurationMinutes;
-    new Setting(settingsSection)
-      .setName('목표 길이')
-      .setDesc(`${durationConfig.min}-${durationConfig.max}분`)
-      .addSlider(slider => slider
-        .setLimits(durationConfig.min, durationConfig.max, 1)
-        .setValue(this.targetDuration)
-        .setDynamicTooltip()
-        .onChange((value) => {
-          this.targetDuration = value;
-        })
-      );
+    // Row 1: Duration + Language
+    const row1 = settingsSection.createDiv({ cls: 'settings-row' });
+
+    // Duration
+    const durationGroup = row1.createDiv({ cls: 'setting-group duration-group' });
+    durationGroup.createEl('span', { text: '길이', cls: 'setting-label' });
+    this.durationSliderEl = durationGroup.createEl('input', {
+      cls: 'duration-slider',
+      attr: { type: 'range', min: '3', max: '15', value: String(this.targetDuration) }
+    });
+    this.durationValueEl = durationGroup.createEl('span', {
+      text: `${this.targetDuration}분`,
+      cls: 'duration-value'
+    });
+    this.durationSliderEl.oninput = () => {
+      this.targetDuration = parseInt(this.durationSliderEl?.value || '5');
+      if (this.durationValueEl) {
+        this.durationValueEl.setText(`${this.targetDuration}분`);
+      }
+    };
 
     // Language
-    new Setting(settingsSection)
-      .setName('언어')
-      .addDropdown(dropdown => {
-        Object.entries(LANGUAGE_NAMES).forEach(([key, name]) => {
-          dropdown.addOption(key, name);
-        });
-        dropdown.setValue(this.selectedLanguage);
-        dropdown.onChange((value: PreferredLanguage) => {
-          this.selectedLanguage = value;
-        });
-        return dropdown;
-      });
+    const langGroup = row1.createDiv({ cls: 'setting-group' });
+    langGroup.createEl('span', { text: '언어', cls: 'setting-label' });
+    const langSelect = langGroup.createEl('select', { cls: 'setting-select' });
+    Object.entries(LANGUAGE_NAMES).forEach(([key, name]) => {
+      const opt = langSelect.createEl('option', { value: key, text: name });
+      if (key === this.selectedLanguage) opt.selected = true;
+    });
+    langSelect.onchange = () => {
+      this.selectedLanguage = langSelect.value as PreferredLanguage;
+    };
+
+    // Row 2: TTS Provider + Voice(s)
+    const row2 = settingsSection.createDiv({ cls: 'settings-row' });
 
     // TTS Provider
-    new Setting(settingsSection)
-      .setName('TTS')
-      .addDropdown(dropdown => {
-        Object.entries(TTS_PROVIDER_CONFIGS).forEach(([key, config]) => {
-          dropdown.addOption(key, config.name);
-        });
-        dropdown.setValue(this.selectedTtsProvider);
-        dropdown.onChange((value: TTSProvider) => {
-          this.selectedTtsProvider = value;
-          this.selectedTtsModel = TTS_PROVIDER_CONFIGS[value].defaultModel;
-          this.updateVoiceSelection();
-        });
-        return dropdown;
-      });
+    const ttsGroup = row2.createDiv({ cls: 'setting-group' });
+    ttsGroup.createEl('span', { text: 'TTS', cls: 'setting-label' });
+    const ttsSelect = ttsGroup.createEl('select', { cls: 'setting-select' });
+    Object.entries(TTS_PROVIDER_CONFIGS).forEach(([key, config]) => {
+      const opt = ttsSelect.createEl('option', { value: key, text: config.name });
+      if (key === this.selectedTtsProvider) opt.selected = true;
+    });
+    ttsSelect.onchange = () => {
+      this.selectedTtsProvider = ttsSelect.value as TTSProvider;
+      this.selectedTtsModel = TTS_PROVIDER_CONFIGS[this.selectedTtsProvider].defaultModel;
+      this.updateVoiceSelection();
+    };
 
-    // Voice Selection Container
-    this.voiceSelectionContainer = settingsSection.createDiv({ cls: 'voice-selection-container' });
+    // Voice Selection Container (will be populated dynamically)
+    this.voiceSelectionContainer = row2.createDiv({ cls: 'voice-group' });
     this.updateVoiceSelection();
 
-    // Upload to Drive
-    new Setting(settingsSection)
-      .setName('Google Drive 업로드')
-      .addToggle(toggle => toggle
-        .setValue(this.uploadToDrive)
-        .onChange((value) => {
-          this.uploadToDrive = value;
-        })
-      );
+    // Row 3: Drive upload
+    const row3 = settingsSection.createDiv({ cls: 'settings-row' });
+    const driveGroup = row3.createDiv({ cls: 'setting-group toggle-group' });
+    driveGroup.createEl('span', { text: 'Drive 업로드', cls: 'setting-label' });
+    const driveToggle = driveGroup.createEl('input', {
+      cls: 'setting-toggle',
+      attr: { type: 'checkbox' }
+    });
+    (driveToggle as HTMLInputElement).checked = this.uploadToDrive;
+    driveToggle.onchange = () => {
+      this.uploadToDrive = (driveToggle as HTMLInputElement).checked;
+    };
 
     // ===== Buttons =====
     const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
@@ -326,12 +337,13 @@ export class SpeechOptionsModal extends Modal {
     this.templateButtonsContainer.empty();
     this.templateButtons.clear();
 
+    // Reordered: verbatim moved to last
     const templates: { key: SpeechTemplate; icon: string; label: string }[] = [
-      { key: 'verbatim', icon: '📄', label: '원문 그대로' },
       { key: 'key-summary', icon: '📝', label: '핵심 요약' },
       { key: 'lecture', icon: '🎓', label: '강의식' },
       { key: 'podcast', icon: '🎙️', label: '팟캐스트' },
-      { key: 'notebooklm-dialogue', icon: '👥', label: 'NotebookLM' }
+      { key: 'notebooklm-dialogue', icon: '👥', label: 'NotebookLM' },
+      { key: 'verbatim', icon: '📄', label: '원문 그대로' }
     ];
 
     templates.forEach(template => {
@@ -339,8 +351,7 @@ export class SpeechOptionsModal extends Modal {
         cls: `template-btn ${this.selectedTemplate === template.key ? 'active' : ''}`
       });
 
-      const iconBox = btn.createEl('span', { cls: 'template-icon-box' });
-      iconBox.createEl('span', { text: template.icon, cls: 'template-icon' });
+      btn.createEl('span', { text: template.icon, cls: 'template-icon' });
       btn.createEl('span', { text: template.label, cls: 'template-label' });
 
       btn.onclick = () => this.selectTemplate(template.key);
@@ -395,7 +406,7 @@ export class SpeechOptionsModal extends Modal {
       const titleLine = previewBox.createDiv({ cls: 'prompt-title' });
       titleLine.createEl('span', { text: `[${templateConfig.nameKo}]` });
 
-      const contentPreview = previewBox.createEl('div', {
+      previewBox.createEl('div', {
         cls: 'prompt-content',
         text: promptContent.substring(0, 300) + (promptContent.length > 300 ? '...' : '')
       });
@@ -422,55 +433,62 @@ export class SpeechOptionsModal extends Modal {
       const isDialogue = this.selectedTemplate === 'notebooklm-dialogue';
 
       if (isDialogue) {
-        new Setting(this.voiceSelectionContainer)
-          .setName('Host A')
-          .addDropdown(dropdown => {
-            GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
-            });
-            dropdown.setValue(this.selectedVoiceHostA.id);
-            dropdown.onChange((value) => {
-              this.selectedVoiceHostA = GEMINI_TTS_VOICES.find(v => v.id === value) || GEMINI_TTS_VOICES[0];
-            });
-            return dropdown;
+        // Host A
+        const hostAGroup = this.voiceSelectionContainer.createDiv({ cls: 'setting-group' });
+        hostAGroup.createEl('span', { text: 'Host A', cls: 'setting-label' });
+        const hostASelect = hostAGroup.createEl('select', { cls: 'setting-select' });
+        GEMINI_TTS_VOICES.forEach(voice => {
+          const opt = hostASelect.createEl('option', {
+            value: voice.id,
+            text: `${voice.name} (${voice.gender})`
           });
+          if (voice.id === this.selectedVoiceHostA.id) opt.selected = true;
+        });
+        hostASelect.onchange = () => {
+          this.selectedVoiceHostA = GEMINI_TTS_VOICES.find(v => v.id === hostASelect.value) || GEMINI_TTS_VOICES[0];
+        };
 
-        new Setting(this.voiceSelectionContainer)
-          .setName('Host B')
-          .addDropdown(dropdown => {
-            GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
-            });
-            dropdown.setValue(this.selectedVoiceHostB.id);
-            dropdown.onChange((value) => {
-              this.selectedVoiceHostB = GEMINI_TTS_VOICES.find(v => v.id === value) || GEMINI_TTS_VOICES[1];
-            });
-            return dropdown;
+        // Host B
+        const hostBGroup = this.voiceSelectionContainer.createDiv({ cls: 'setting-group' });
+        hostBGroup.createEl('span', { text: 'Host B', cls: 'setting-label' });
+        const hostBSelect = hostBGroup.createEl('select', { cls: 'setting-select' });
+        GEMINI_TTS_VOICES.forEach(voice => {
+          const opt = hostBSelect.createEl('option', {
+            value: voice.id,
+            text: `${voice.name} (${voice.gender})`
           });
+          if (voice.id === this.selectedVoiceHostB.id) opt.selected = true;
+        });
+        hostBSelect.onchange = () => {
+          this.selectedVoiceHostB = GEMINI_TTS_VOICES.find(v => v.id === hostBSelect.value) || GEMINI_TTS_VOICES[1];
+        };
       } else {
-        new Setting(this.voiceSelectionContainer)
-          .setName('음성')
-          .addDropdown(dropdown => {
-            GEMINI_TTS_VOICES.forEach(voice => {
-              dropdown.addOption(voice.id, `${voice.name} (${voice.gender})`);
-            });
-            dropdown.setValue(this.selectedVoice.id);
-            dropdown.onChange((value) => {
-              this.selectedVoice = GEMINI_TTS_VOICES.find(v => v.id === value) || GEMINI_TTS_VOICES[0];
-            });
-            return dropdown;
+        // Single voice
+        const voiceGroup = this.voiceSelectionContainer.createDiv({ cls: 'setting-group' });
+        voiceGroup.createEl('span', { text: '음성', cls: 'setting-label' });
+        const voiceSelect = voiceGroup.createEl('select', { cls: 'setting-select' });
+        GEMINI_TTS_VOICES.forEach(voice => {
+          const opt = voiceSelect.createEl('option', {
+            value: voice.id,
+            text: `${voice.name} (${voice.gender})`
           });
+          if (voice.id === this.selectedVoice.id) opt.selected = true;
+        });
+        voiceSelect.onchange = () => {
+          this.selectedVoice = GEMINI_TTS_VOICES.find(v => v.id === voiceSelect.value) || GEMINI_TTS_VOICES[0];
+        };
       }
     } else if (this.selectedTtsProvider === 'elevenlabs') {
-      new Setting(this.voiceSelectionContainer)
-        .setName('Voice ID')
-        .addText(text => text
-          .setPlaceholder('ElevenLabs Voice ID')
-          .setValue(this.selectedVoice.id)
-          .onChange((value) => {
-            this.selectedVoice = { id: value, name: value, gender: 'neutral' };
-          })
-        );
+      const voiceGroup = this.voiceSelectionContainer.createDiv({ cls: 'setting-group' });
+      voiceGroup.createEl('span', { text: 'Voice ID', cls: 'setting-label' });
+      const voiceInput = voiceGroup.createEl('input', {
+        cls: 'setting-input',
+        attr: { type: 'text', placeholder: 'ElevenLabs Voice ID' }
+      });
+      (voiceInput as HTMLInputElement).value = this.selectedVoice.id;
+      voiceInput.oninput = () => {
+        this.selectedVoice = { id: (voiceInput as HTMLInputElement).value, name: (voiceInput as HTMLInputElement).value, gender: 'neutral' };
+      };
     }
   }
 
@@ -510,14 +528,14 @@ export class SpeechOptionsModal extends Modal {
     const style = document.createElement('style');
     style.textContent = `
       .nanobanana-speech-options {
-        width: 650px;
+        width: 620px;
         max-width: 95vw;
-        padding: 20px;
+        padding: 16px 20px;
       }
 
       .nanobanana-speech-options .modal-title {
-        margin: 0 0 20px 0;
-        font-size: 1.4em;
+        margin: 0 0 14px 0;
+        font-size: 1.3em;
       }
 
       .nanobanana-speech-options .accent-text {
@@ -525,34 +543,40 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .section {
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
 
       .nanobanana-speech-options .section-label {
         font-weight: 600;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         display: block;
+        font-size: 13px;
+      }
+
+      .nanobanana-speech-options .row-label {
+        font-weight: 600;
+        font-size: 13px;
       }
 
       .nanobanana-speech-options .source-row {
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
 
       .nanobanana-speech-options .source-buttons {
         display: flex;
-        gap: 8px;
+        gap: 6px;
       }
 
       .nanobanana-speech-options .source-btn {
-        padding: 6px 14px;
-        border-radius: 16px;
+        padding: 5px 12px;
+        border-radius: 14px;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         cursor: pointer;
-        font-size: 13px;
+        font-size: 12px;
         transition: all 0.15s ease;
       }
 
@@ -572,14 +596,14 @@ export class SpeechOptionsModal extends Modal {
 
       .nanobanana-speech-options .content-preview {
         width: 100%;
-        min-height: 60px;
-        max-height: 100px;
-        padding: 10px;
+        min-height: 50px;
+        max-height: 80px;
+        padding: 8px 10px;
         border: 1px solid var(--background-modifier-border);
-        border-radius: 8px;
+        border-radius: 6px;
         background: var(--background-primary);
         font-family: var(--font-text);
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.4;
         resize: none;
         color: var(--text-normal);
@@ -598,29 +622,29 @@ export class SpeechOptionsModal extends Modal {
 
       .nanobanana-speech-options .char-count {
         text-align: right;
-        font-size: 12px;
+        font-size: 11px;
         color: var(--text-muted);
-        margin-top: 6px;
+        margin-top: 4px;
       }
 
-      /* Template Buttons - New Style */
+      /* Template Buttons */
       .nanobanana-speech-options .template-buttons {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 10px;
+        gap: 8px;
+        margin-top: 8px;
       }
 
       .nanobanana-speech-options .template-btn {
         display: inline-flex;
         align-items: center;
-        padding: 0;
+        gap: 6px;
+        padding: 7px 12px;
         border-radius: 8px;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         cursor: pointer;
         transition: all 0.15s ease;
-        overflow: hidden;
       }
 
       .nanobanana-speech-options .template-btn:hover {
@@ -630,44 +654,21 @@ export class SpeechOptionsModal extends Modal {
       .nanobanana-speech-options .template-btn.active {
         background: var(--interactive-accent);
         border-color: var(--interactive-accent);
-      }
-
-      .nanobanana-speech-options .template-btn.active .template-icon-box {
-        background: rgba(0, 0, 0, 0.2);
-      }
-
-      .nanobanana-speech-options .template-btn.active .template-label {
         color: var(--text-on-accent);
       }
 
-      .nanobanana-speech-options .template-icon-box {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        background: var(--background-primary);
-        border-right: 1px solid var(--background-modifier-border);
-      }
-
-      .nanobanana-speech-options .template-btn.active .template-icon-box {
-        border-right-color: transparent;
-      }
-
       .nanobanana-speech-options .template-icon {
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1;
       }
 
       .nanobanana-speech-options .template-label {
-        padding: 8px 14px 8px 10px;
         font-size: 13px;
-        color: var(--text-normal);
       }
 
       /* Prompt Preview Section */
       .nanobanana-speech-options .prompt-section {
-        margin-top: 16px;
+        margin-top: 12px;
       }
 
       .nanobanana-speech-options .prompt-tabs {
@@ -677,12 +678,12 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .prompt-tab-btn {
-        padding: 10px 20px;
+        padding: 8px 16px;
         border: none;
         background: transparent;
         color: var(--text-muted);
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         border-bottom: 2px solid transparent;
         margin-bottom: -1px;
         transition: all 0.15s ease;
@@ -701,39 +702,40 @@ export class SpeechOptionsModal extends Modal {
         background: var(--background-secondary);
         border: 1px solid var(--background-modifier-border);
         border-top: none;
-        border-radius: 0 0 8px 8px;
-        min-height: 100px;
-        max-height: 150px;
+        border-radius: 0 0 6px 6px;
+        min-height: 70px;
+        max-height: 100px;
         overflow-y: auto;
       }
 
       .nanobanana-speech-options .prompt-preview-box {
-        padding: 12px;
+        padding: 10px;
       }
 
       .nanobanana-speech-options .prompt-title {
         font-weight: 600;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
         color: var(--text-normal);
+        font-size: 13px;
       }
 
       .nanobanana-speech-options .prompt-content {
-        font-size: 13px;
+        font-size: 12px;
         color: var(--text-muted);
-        line-height: 1.5;
+        line-height: 1.4;
         white-space: pre-wrap;
       }
 
       .nanobanana-speech-options .custom-prompt-editor {
         width: 100%;
-        min-height: 100px;
-        max-height: 150px;
-        padding: 12px;
+        min-height: 70px;
+        max-height: 100px;
+        padding: 10px;
         border: none;
         background: transparent;
         font-family: var(--font-text);
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 12px;
+        line-height: 1.4;
         resize: none;
         color: var(--text-normal);
       }
@@ -742,29 +744,98 @@ export class SpeechOptionsModal extends Modal {
         outline: none;
       }
 
-      .nanobanana-speech-options .settings-section .setting-item {
-        border-top: none;
-        padding: 8px 0;
+      /* Compact Settings */
+      .nanobanana-speech-options .compact-settings {
+        margin-top: 12px;
       }
 
-      .nanobanana-speech-options .voice-selection-container .setting-item {
-        padding: 6px 0;
+      .nanobanana-speech-options .settings-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+
+      .nanobanana-speech-options .setting-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .nanobanana-speech-options .setting-label {
+        font-size: 13px;
+        color: var(--text-normal);
+        white-space: nowrap;
+      }
+
+      .nanobanana-speech-options .setting-select {
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        color: var(--text-normal);
+        font-size: 12px;
+        min-width: 100px;
+      }
+
+      .nanobanana-speech-options .setting-input {
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-secondary);
+        color: var(--text-normal);
+        font-size: 12px;
+        width: 120px;
+      }
+
+      .nanobanana-speech-options .duration-group {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .nanobanana-speech-options .duration-slider {
+        flex: 1;
+        min-width: 100px;
+        margin: 0 8px;
+      }
+
+      .nanobanana-speech-options .duration-value {
+        font-size: 13px;
+        color: var(--text-accent);
+        min-width: 35px;
+      }
+
+      .nanobanana-speech-options .voice-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .nanobanana-speech-options .toggle-group {
+        gap: 10px;
+      }
+
+      .nanobanana-speech-options .setting-toggle {
+        width: 36px;
+        height: 20px;
+        cursor: pointer;
       }
 
       .nanobanana-speech-options .modal-button-container {
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        margin-top: 20px;
-        padding-top: 16px;
+        margin-top: 14px;
+        padding-top: 12px;
         border-top: 1px solid var(--background-modifier-border);
       }
 
       .nanobanana-speech-options .btn-cancel,
       .nanobanana-speech-options .btn-primary {
-        padding: 8px 20px;
+        padding: 7px 18px;
         border-radius: 6px;
-        font-size: 14px;
+        font-size: 13px;
         cursor: pointer;
       }
 
