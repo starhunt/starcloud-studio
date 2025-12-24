@@ -852,172 +852,180 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
         })
       );
 
-    // HTML Prompts Section
+    // Prompt Management with Tabs
     new Setting(containerEl)
-      .setName('HTML 프롬프트 관리')
+      .setName('프롬프트 관리')
       .setHeading();
 
-    // HTML: Vertical Scroll Prompt
-    this.createPromptEditSection(
-      containerEl,
-      'HTML 세로 스크롤 프롬프트',
-      'vertical-scroll 스타일의 HTML 슬라이드 생성 프롬프트',
-      this.plugin.settings.htmlVerticalScrollPromptOverride || BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
-      BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
-      async (value) => {
-        this.plugin.settings.htmlVerticalScrollPromptOverride = value;
-        await this.plugin.saveSettings();
-      }
-    );
-
-    // HTML: Presentation Prompt
-    this.createPromptEditSection(
-      containerEl,
-      'HTML 프레젠테이션 프롬프트',
-      'presentation 스타일의 HTML 슬라이드 생성 프롬프트',
-      this.plugin.settings.htmlPresentationPromptOverride || BUILTIN_HTML_PROMPTS['presentation'].prompt,
-      BUILTIN_HTML_PROMPTS['presentation'].prompt,
-      async (value) => {
-        this.plugin.settings.htmlPresentationPromptOverride = value;
-        await this.plugin.saveSettings();
-      }
-    );
-
-    // PPTX Prompts Section
-    new Setting(containerEl)
-      .setName('PPTX 프롬프트 관리')
-      .setHeading();
-
-    // PPTX: Standard Prompt
-    this.createPromptEditSection(
-      containerEl,
-      'PPTX 고정 레이아웃 프롬프트',
-      '고정 레이아웃 스타일의 PPTX 슬라이드 생성 프롬프트',
-      this.plugin.settings.pptxStandardPromptOverride || BUILTIN_PPTX_PROMPTS['standard'].prompt,
-      BUILTIN_PPTX_PROMPTS['standard'].prompt,
-      async (value) => {
-        this.plugin.settings.pptxStandardPromptOverride = value;
-        await this.plugin.saveSettings();
-      }
-    );
-
-    // PPTX: Flexible Prompt
-    this.createPromptEditSection(
-      containerEl,
-      'PPTX 유연 배치 프롬프트',
-      '유연 배치 스타일의 PPTX 슬라이드 생성 프롬프트',
-      this.plugin.settings.pptxFlexiblePromptOverride || BUILTIN_PPTX_PROMPTS['flexible'].prompt,
-      BUILTIN_PPTX_PROMPTS['flexible'].prompt,
-      async (value) => {
-        this.plugin.settings.pptxFlexiblePromptOverride = value;
-        await this.plugin.saveSettings();
-      }
-    );
+    this.createPromptTabs(containerEl);
   }
 
-  private createPromptEditSection(
-    containerEl: HTMLElement,
-    title: string,
-    description: string,
-    currentValue: string,
-    defaultValue: string,
-    onChange: (value: string) => Promise<void>
-  ) {
-    const sectionEl = containerEl.createDiv({ cls: 'starcloud-prompt-edit-section' });
+  private createPromptTabs(containerEl: HTMLElement) {
+    const prompts = [
+      {
+        id: 'html-vertical',
+        label: 'HTML 세로',
+        description: 'vertical-scroll 스타일의 HTML 슬라이드 생성 프롬프트',
+        getValue: () => this.plugin.settings.htmlVerticalScrollPromptOverride || BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
+        getDefault: () => BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
+        setValue: async (v: string) => { this.plugin.settings.htmlVerticalScrollPromptOverride = v; await this.plugin.saveSettings(); }
+      },
+      {
+        id: 'html-presentation',
+        label: 'HTML 프레젠테이션',
+        description: 'presentation 스타일의 HTML 슬라이드 생성 프롬프트',
+        getValue: () => this.plugin.settings.htmlPresentationPromptOverride || BUILTIN_HTML_PROMPTS['presentation'].prompt,
+        getDefault: () => BUILTIN_HTML_PROMPTS['presentation'].prompt,
+        setValue: async (v: string) => { this.plugin.settings.htmlPresentationPromptOverride = v; await this.plugin.saveSettings(); }
+      },
+      {
+        id: 'pptx-standard',
+        label: 'PPTX 고정',
+        description: '고정 레이아웃 스타일의 PPTX 슬라이드 생성 프롬프트',
+        getValue: () => this.plugin.settings.pptxStandardPromptOverride || BUILTIN_PPTX_PROMPTS['standard'].prompt,
+        getDefault: () => BUILTIN_PPTX_PROMPTS['standard'].prompt,
+        setValue: async (v: string) => { this.plugin.settings.pptxStandardPromptOverride = v; await this.plugin.saveSettings(); }
+      },
+      {
+        id: 'pptx-flexible',
+        label: 'PPTX 유연',
+        description: '유연 배치 스타일의 PPTX 슬라이드 생성 프롬프트',
+        getValue: () => this.plugin.settings.pptxFlexiblePromptOverride || BUILTIN_PPTX_PROMPTS['flexible'].prompt,
+        getDefault: () => BUILTIN_PPTX_PROMPTS['flexible'].prompt,
+        setValue: async (v: string) => { this.plugin.settings.pptxFlexiblePromptOverride = v; await this.plugin.saveSettings(); }
+      }
+    ];
 
-    // Add inline styles for the section
-    sectionEl.style.cssText = `
+    const wrapper = containerEl.createDiv({ cls: 'prompt-tabs-wrapper' });
+    wrapper.style.cssText = `
       border: 1px solid var(--background-modifier-border);
       border-radius: 8px;
-      padding: 16px;
+      overflow: hidden;
       margin-bottom: 16px;
-      background: var(--background-secondary);
     `;
 
-    // Header with title and buttons
-    const headerEl = sectionEl.createDiv({ cls: 'prompt-edit-header' });
-    headerEl.style.cssText = `
+    // Tab buttons
+    const tabBar = wrapper.createDiv({ cls: 'prompt-tab-bar' });
+    tabBar.style.cssText = `
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
+      background: var(--background-secondary);
+      border-bottom: 1px solid var(--background-modifier-border);
     `;
 
-    const titleContainer = headerEl.createDiv();
-    titleContainer.createEl('h4', { text: title });
-    titleContainer.querySelector('h4')!.style.cssText = `margin: 0 0 4px 0; font-size: 14px;`;
-    titleContainer.createEl('p', { text: description });
-    titleContainer.querySelector('p')!.style.cssText = `margin: 0; font-size: 12px; color: var(--text-muted);`;
-
-    const buttonContainer = headerEl.createDiv();
-    buttonContainer.style.cssText = `display: flex; gap: 8px;`;
-
-    // Load Default Button
-    const isModified = currentValue !== defaultValue;
-    const loadDefaultBtn = buttonContainer.createEl('button', {
-      text: '기본값 불러오기',
-      cls: isModified ? '' : 'mod-muted'
-    });
-    loadDefaultBtn.style.cssText = `
-      font-size: 12px;
-      padding: 4px 12px;
-      cursor: pointer;
-    `;
-    loadDefaultBtn.disabled = !isModified;
-
-    // Textarea
-    const textAreaEl = sectionEl.createEl('textarea');
-    textAreaEl.value = currentValue;
-    textAreaEl.style.cssText = `
-      width: 100%;
-      min-height: 200px;
-      max-height: 400px;
-      font-family: var(--font-monospace);
-      font-size: 11px;
-      line-height: 1.5;
-      padding: 12px;
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 4px;
+    // Content container
+    const contentContainer = wrapper.createDiv({ cls: 'prompt-tab-content' });
+    contentContainer.style.cssText = `
+      padding: 16px;
       background: var(--background-primary);
-      color: var(--text-normal);
-      resize: vertical;
     `;
 
-    // Status indicator
-    const statusEl = sectionEl.createDiv();
-    statusEl.style.cssText = `
-      margin-top: 8px;
-      font-size: 11px;
-      color: var(--text-muted);
-    `;
-    statusEl.textContent = isModified ? '✏️ 사용자 수정됨' : '✓ 기본값 사용 중';
+    const tabButtons: HTMLElement[] = [];
+    const tabContents: HTMLElement[] = [];
 
-    // Event handlers
-    textAreaEl.onchange = async () => {
-      const newValue = textAreaEl.value;
-      // If user clears or matches default, reset to empty (use default)
-      if (newValue === defaultValue || newValue.trim() === '') {
-        await onChange('');
+    prompts.forEach((prompt, index) => {
+      // Create tab button
+      const tabBtn = tabBar.createEl('button', { text: prompt.label });
+      const isModified = prompt.getValue() !== prompt.getDefault();
+      tabBtn.style.cssText = `
+        flex: 1;
+        padding: 10px 8px;
+        border: none;
+        background: ${index === 0 ? 'var(--background-primary)' : 'transparent'};
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: ${index === 0 ? '600' : '400'};
+        color: var(--text-normal);
+        border-bottom: ${index === 0 ? '2px solid var(--interactive-accent)' : '2px solid transparent'};
+        transition: all 0.15s ease;
+      `;
+      if (isModified) {
+        tabBtn.textContent = prompt.label + ' *';
+      }
+      tabButtons.push(tabBtn);
+
+      // Create tab content
+      const content = contentContainer.createDiv();
+      content.style.display = index === 0 ? 'block' : 'none';
+      tabContents.push(content);
+
+      // Description
+      const descEl = content.createEl('p', { text: prompt.description });
+      descEl.style.cssText = `margin: 0 0 12px 0; font-size: 12px; color: var(--text-muted);`;
+
+      // Textarea
+      const textArea = content.createEl('textarea');
+      textArea.value = prompt.getValue();
+      textArea.style.cssText = `
+        width: 100%;
+        min-height: 250px;
+        max-height: 400px;
+        font-family: var(--font-monospace);
+        font-size: 11px;
+        line-height: 1.5;
+        padding: 12px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 4px;
+        background: var(--background-secondary);
+        color: var(--text-normal);
+        resize: vertical;
+      `;
+
+      // Button row
+      const btnRow = content.createDiv();
+      btnRow.style.cssText = `display: flex; justify-content: space-between; align-items: center; margin-top: 12px;`;
+
+      // Status
+      const statusEl = btnRow.createEl('span');
+      statusEl.style.cssText = `font-size: 11px; color: var(--text-muted);`;
+      statusEl.textContent = isModified ? '✏️ 사용자 수정됨' : '✓ 기본값 사용 중';
+
+      // Load default button
+      const loadDefaultBtn = btnRow.createEl('button', { text: '기본값 불러오기' });
+      loadDefaultBtn.style.cssText = `font-size: 12px; padding: 6px 14px; cursor: pointer;`;
+      loadDefaultBtn.disabled = !isModified;
+      if (!isModified) loadDefaultBtn.classList.add('mod-muted');
+
+      // Event handlers
+      textArea.onchange = async () => {
+        const newValue = textArea.value;
+        const defaultVal = prompt.getDefault();
+        if (newValue === defaultVal || newValue.trim() === '') {
+          await prompt.setValue('');
+          textArea.value = defaultVal;
+          statusEl.textContent = '✓ 기본값 사용 중';
+          loadDefaultBtn.disabled = true;
+          loadDefaultBtn.classList.add('mod-muted');
+          tabBtn.textContent = prompt.label;
+        } else {
+          await prompt.setValue(newValue);
+          statusEl.textContent = '✏️ 사용자 수정됨';
+          loadDefaultBtn.disabled = false;
+          loadDefaultBtn.classList.remove('mod-muted');
+          tabBtn.textContent = prompt.label + ' *';
+        }
+      };
+
+      loadDefaultBtn.onclick = async () => {
+        textArea.value = prompt.getDefault();
+        await prompt.setValue('');
+        statusEl.textContent = '✓ 기본값 사용 중';
         loadDefaultBtn.disabled = true;
         loadDefaultBtn.classList.add('mod-muted');
-        statusEl.textContent = '✓ 기본값 사용 중';
-        textAreaEl.value = defaultValue;
-      } else {
-        await onChange(newValue);
-        loadDefaultBtn.disabled = false;
-        loadDefaultBtn.classList.remove('mod-muted');
-        statusEl.textContent = '✏️ 사용자 수정됨';
-      }
-    };
+        tabBtn.textContent = prompt.label;
+        new Notice('기본값이 복원되었습니다');
+      };
 
-    loadDefaultBtn.onclick = async () => {
-      textAreaEl.value = defaultValue;
-      await onChange('');
-      loadDefaultBtn.disabled = true;
-      loadDefaultBtn.classList.add('mod-muted');
-      statusEl.textContent = '✓ 기본값 사용 중';
-      new Notice('기본값이 복원되었습니다');
-    };
+      // Tab click handler
+      tabBtn.onclick = () => {
+        tabButtons.forEach((btn, i) => {
+          const isActive = i === index;
+          btn.style.background = isActive ? 'var(--background-primary)' : 'transparent';
+          btn.style.fontWeight = isActive ? '600' : '400';
+          btn.style.borderBottom = isActive ? '2px solid var(--interactive-accent)' : '2px solid transparent';
+          tabContents[i].style.display = isActive ? 'block' : 'none';
+        });
+      };
+    });
   }
 
   private createTTSSection(containerEl: HTMLElement) {
