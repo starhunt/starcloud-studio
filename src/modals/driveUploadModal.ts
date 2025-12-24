@@ -50,10 +50,10 @@ export class DriveUploadModal extends Modal {
 
     const header = contentEl.createDiv({ cls: 'nanobanana-modal-header' });
     header.createEl('span', { text: '📁', cls: 'nanobanana-modal-icon' });
-    header.createEl('h2', { text: 'Drive Embedder', cls: 'nanobanana-modal-title' });
+    header.createEl('h2', { text: 'Drive 임베더', cls: 'nanobanana-modal-title' });
 
     contentEl.createEl('p', {
-      text: 'Upload files to Google Drive and generate embed code.',
+      text: 'Google Drive에 파일을 업로드하고 임베드 코드를 생성합니다.',
       cls: 'nanobanana-modal-desc'
     });
 
@@ -71,10 +71,10 @@ export class DriveUploadModal extends Modal {
     const dropZone = container.createDiv({ cls: 'nanobanana-drop-zone' });
     const dropContent = dropZone.createDiv({ cls: 'nanobanana-drop-content' });
     dropContent.createEl('span', { text: '📂', cls: 'nanobanana-drop-icon' });
-    dropContent.createEl('p', { text: 'Drag files here or' });
+    dropContent.createEl('p', { text: '파일을 여기에 드래그하거나' });
 
     const selectBtn = dropContent.createEl('button', {
-      text: 'Select File',
+      text: '파일 선택',
       cls: 'nanobanana-btn nanobanana-btn-primary'
     });
 
@@ -105,7 +105,7 @@ export class DriveUploadModal extends Modal {
 
   private processFile(file: File) {
     if (!isFileSupported(file.name)) {
-      new Notice('Unsupported file type: ' + file.name);
+      new Notice('지원하지 않는 파일 형식입니다: ' + file.name);
       return;
     }
     this.selectedFile = file;
@@ -128,7 +128,8 @@ export class DriveUploadModal extends Modal {
     infoDiv.createEl('span', { text: icon, cls: 'nanobanana-file-icon' });
     const details = infoDiv.createDiv({ cls: 'nanobanana-file-details' });
     details.createEl('span', { text: file.name, cls: 'nanobanana-file-name' });
-    const categoryText = this.fileCategory ? this.fileCategory.toUpperCase() : 'FILE';
+    const categoryNames: Record<ContentCategory, string> = { video: '동영상', audio: '오디오', document: '문서', image: '이미지' };
+    const categoryText = this.fileCategory ? categoryNames[this.fileCategory] : '파일';
     details.createEl('span', { text: categoryText + ' • ' + formatFileSize(file.size), cls: 'nanobanana-file-meta' });
 
     const clearBtn = infoDiv.createEl('button', { text: '✕', cls: 'nanobanana-btn-clear' });
@@ -139,7 +140,7 @@ export class DriveUploadModal extends Modal {
     if (!this.sizeOptionsContainer || !this.fileCategory) return;
     this.sizeOptionsContainer.empty();
     this.sizeOptionsContainer.removeClass('nanobanana-hidden');
-    this.sizeOptionsContainer.createEl('label', { text: 'Embed Size', cls: 'nanobanana-label' });
+    this.sizeOptionsContainer.createEl('label', { text: '임베드 크기', cls: 'nanobanana-label' });
 
     const presets = getSizePresets(this.fileCategory);
     this.selectedSize = getRecommendedSize(this.fileCategory);
@@ -152,7 +153,7 @@ export class DriveUploadModal extends Modal {
       });
       option.createEl('span', { text: preset.name, cls: 'nanobanana-size-name' });
       option.createEl('span', { text: preset.width + ' × ' + preset.height, cls: 'nanobanana-size-dims' });
-      if (preset.recommended) option.createEl('span', { text: 'Recommended', cls: 'nanobanana-badge' });
+      if (preset.recommended) option.createEl('span', { text: '추천', cls: 'nanobanana-badge' });
 
       option.onclick = () => {
         this.selectedSize = preset;
@@ -165,8 +166,8 @@ export class DriveUploadModal extends Modal {
   private createTitleToggle(container: HTMLElement) {
     const toggleContainer = container.createDiv({ cls: 'nanobanana-title-toggle' });
     const label = toggleContainer.createEl('label', { cls: 'nanobanana-toggle-label' });
-    label.createEl('span', { text: 'Show filename' });
-    label.createEl('span', { text: 'Display filename above the embed', cls: 'nanobanana-toggle-desc' });
+    label.createEl('span', { text: '파일명 표시' });
+    label.createEl('span', { text: '임베드 위에 파일명 표시', cls: 'nanobanana-toggle-desc' });
     const toggle = toggleContainer.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
     toggle.checked = this.showTitle;
     toggle.onchange = () => { this.showTitle = toggle.checked; };
@@ -175,15 +176,15 @@ export class DriveUploadModal extends Modal {
   private createUploadButton() {
     if (!this.uploadButtonContainer) return;
     const buttonRow = this.uploadButtonContainer.createDiv({ cls: 'nanobanana-button-row' });
-    const cancelBtn = buttonRow.createEl('button', { text: 'Cancel', cls: 'nanobanana-btn nanobanana-btn-cancel' });
+    const cancelBtn = buttonRow.createEl('button', { text: '취소', cls: 'nanobanana-btn nanobanana-btn-cancel' });
     cancelBtn.onclick = () => this.close();
-    const uploadBtn = buttonRow.createEl('button', { text: '☁️ Upload & Embed', cls: 'nanobanana-btn nanobanana-btn-primary nanobanana-btn-upload' });
+    const uploadBtn = buttonRow.createEl('button', { text: '☁️ 업로드 및 임베드', cls: 'nanobanana-btn nanobanana-btn-primary nanobanana-btn-upload' });
     uploadBtn.onclick = () => this.handleUpload();
   }
 
   private async handleUpload() {
     if (!this.selectedFile || !this.selectedSize) {
-      new Notice('Please select a file and size');
+      new Notice('파일과 크기를 선택해주세요');
       return;
     }
     this.showProgressUI();
@@ -202,7 +203,7 @@ export class DriveUploadModal extends Modal {
       this.close();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      new Notice('Upload failed: ' + message);
+      new Notice('업로드 실패: ' + message);
       this.hideProgressUI();
     }
   }
@@ -213,7 +214,7 @@ export class DriveUploadModal extends Modal {
     this.progressContainer.removeClass('nanobanana-hidden');
     if (this.uploadButtonContainer) this.uploadButtonContainer.addClass('nanobanana-hidden');
     this.progressContainer.createDiv({ cls: 'nanobanana-progress-spinner' });
-    this.progressContainer.createEl('p', { text: 'Preparing upload...', cls: 'nanobanana-progress-message' });
+    this.progressContainer.createEl('p', { text: '업로드 준비 중...', cls: 'nanobanana-progress-message' });
     const progressBar = this.progressContainer.createDiv({ cls: 'nanobanana-progress-bar' });
     progressBar.createDiv({ cls: 'nanobanana-progress-fill' });
   }
@@ -242,14 +243,14 @@ export class DriveUploadModal extends Modal {
 
   private createSupportedFormatsSection(container: HTMLElement) {
     const section = container.createEl('details', { cls: 'nanobanana-formats-section' });
-    section.createEl('summary', { text: '▶ Supported File Formats' });
+    section.createEl('summary', { text: '▶ 지원 파일 형식' });
     const content = section.createDiv({ cls: 'nanobanana-formats-content' });
 
     const categories: { name: string; category: ContentCategory; icon: string }[] = [
-      { name: 'Video', category: 'video', icon: '🎬' },
-      { name: 'Audio', category: 'audio', icon: '🎵' },
-      { name: 'Document', category: 'document', icon: '📄' },
-      { name: 'Image', category: 'image', icon: '🖼️' }
+      { name: '동영상', category: 'video', icon: '🎬' },
+      { name: '오디오', category: 'audio', icon: '🎵' },
+      { name: '문서', category: 'document', icon: '📄' },
+      { name: '이미지', category: 'image', icon: '🖼️' }
     ];
 
     categories.forEach(({ name, category, icon }) => {

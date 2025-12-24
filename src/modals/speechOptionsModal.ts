@@ -660,10 +660,15 @@ export class SpeechOptionsModal extends Modal {
       .nanobanana-speech-options .template-icon {
         font-size: 16px;
         line-height: 1;
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       .nanobanana-speech-options .template-label {
         font-size: 13px;
+        background: none !important;
       }
 
       /* Prompt Preview Section */
@@ -817,9 +822,10 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .setting-toggle {
-        width: 36px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         cursor: pointer;
+        accent-color: var(--interactive-accent);
       }
 
       .nanobanana-speech-options .modal-button-container {
