@@ -108,7 +108,7 @@ export class SpeechOptionsModal extends Modal {
     this.contentPreviewEl = contentPreviewContainer.createEl('textarea', {
       cls: 'content-preview',
       attr: {
-        rows: '6',
+        rows: '3',
         placeholder: '콘텐츠를 불러오는 중...'
       }
     });
@@ -485,16 +485,18 @@ export class SpeechOptionsModal extends Modal {
 
       .nanobanana-speech-options .content-preview {
         width: 100%;
-        min-height: 120px;
-        padding: 12px;
+        min-height: 60px;
+        max-height: 100px;
+        padding: 10px;
         border: 1px solid var(--background-modifier-border);
         border-radius: 8px;
         background: var(--background-primary);
         font-family: var(--font-text);
         font-size: 13px;
-        line-height: 1.5;
-        resize: vertical;
+        line-height: 1.4;
+        resize: none;
         color: var(--text-normal);
+        overflow-y: auto;
       }
 
       .nanobanana-speech-options .content-preview:focus {
@@ -522,15 +524,16 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .template-btn {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        border-radius: 8px;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: 6px;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         cursor: pointer;
         transition: all 0.15s ease;
+        font-size: 13px;
       }
 
       .nanobanana-speech-options .template-btn:hover {
@@ -539,18 +542,19 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .template-btn.active {
-        background: var(--interactive-accent-hover);
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
         border-color: var(--interactive-accent);
-        border-style: dashed;
-        border-width: 2px;
       }
 
       .nanobanana-speech-options .template-icon {
-        font-size: 16px;
+        font-size: 14px;
+        line-height: 1;
       }
 
       .nanobanana-speech-options .template-label {
         font-size: 13px;
+        line-height: 1;
       }
 
       .nanobanana-speech-options .settings-section .setting-item {
