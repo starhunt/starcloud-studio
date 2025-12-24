@@ -900,6 +900,7 @@ export interface SpeechOptionsResult {
   dialogueVoices?: DialogueVoices;
   targetDuration: number;  // in minutes
   uploadToDrive: boolean;
+  customPrompt?: string;  // custom prompt for script generation
 }
 
 export interface SpeechPreviewResult {

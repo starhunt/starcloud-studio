@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Editor, MarkdownView } from 'obsidian';
+import { App, Modal, Setting, MarkdownView } from 'obsidian';
 import {
   InputSource,
   SpeechTemplate,
@@ -12,6 +12,9 @@ import {
   DialogueVoices,
   LANGUAGE_NAMES
 } from '../types';
+import { SPEECH_TEMPLATE_PROMPTS } from '../settingsData';
+
+type PromptMode = 'template' | 'custom';
 
 export class SpeechOptionsModal extends Modal {
   private selectedInputSource: InputSource;
@@ -26,15 +29,19 @@ export class SpeechOptionsModal extends Modal {
   private uploadToDrive: boolean = false;
   private customText: string = '';
   private sourceContent: string = '';
+  private promptMode: PromptMode = 'template';
+  private customPrompt: string = '';
   private onSubmit: (result: SpeechOptionsResult) => void;
 
   // UI Elements
   private contentPreviewEl: HTMLTextAreaElement | null = null;
   private charCountEl: HTMLElement | null = null;
   private templateButtonsContainer: HTMLElement | null = null;
+  private promptPreviewContainer: HTMLElement | null = null;
   private voiceSelectionContainer: HTMLElement | null = null;
   private inputSourceButtons: Map<InputSource, HTMLElement> = new Map();
-  private templateButtons: Map<SpeechTemplate, HTMLElement> = new Map();
+  private templateButtons: Map<SpeechTemplate | 'custom', HTMLElement> = new Map();
+  private promptTabButtons: Map<PromptMode, HTMLElement> = new Map();
 
   constructor(
     app: App,
@@ -129,6 +136,30 @@ export class SpeechOptionsModal extends Modal {
 
     this.templateButtonsContainer = templateSection.createDiv({ cls: 'template-buttons' });
     this.renderTemplateButtons();
+
+    // ===== Prompt Preview Section =====
+    const promptSection = contentEl.createDiv({ cls: 'section prompt-section' });
+
+    // Prompt Mode Tabs
+    const promptTabs = promptSection.createDiv({ cls: 'prompt-tabs' });
+
+    const templateTabBtn = promptTabs.createEl('button', {
+      text: '템플릿 프롬프트',
+      cls: `prompt-tab-btn ${this.promptMode === 'template' ? 'active' : ''}`
+    });
+    templateTabBtn.onclick = () => this.selectPromptMode('template');
+    this.promptTabButtons.set('template', templateTabBtn);
+
+    const customTabBtn = promptTabs.createEl('button', {
+      text: '커스텀 프롬프트',
+      cls: `prompt-tab-btn ${this.promptMode === 'custom' ? 'active' : ''}`
+    });
+    customTabBtn.onclick = () => this.selectPromptMode('custom');
+    this.promptTabButtons.set('custom', customTabBtn);
+
+    // Prompt Preview Container
+    this.promptPreviewContainer = promptSection.createDiv({ cls: 'prompt-preview-container' });
+    this.updatePromptPreview();
 
     // ===== Settings Section =====
     const settingsSection = contentEl.createDiv({ cls: 'section settings-section' });
@@ -308,7 +339,8 @@ export class SpeechOptionsModal extends Modal {
         cls: `template-btn ${this.selectedTemplate === template.key ? 'active' : ''}`
       });
 
-      btn.createEl('span', { text: template.icon, cls: 'template-icon' });
+      const iconBox = btn.createEl('span', { cls: 'template-icon-box' });
+      iconBox.createEl('span', { text: template.icon, cls: 'template-icon' });
       btn.createEl('span', { text: template.label, cls: 'template-label' });
 
       btn.onclick = () => this.selectTemplate(template.key);
@@ -318,14 +350,68 @@ export class SpeechOptionsModal extends Modal {
 
   private selectTemplate(template: SpeechTemplate) {
     this.selectedTemplate = template;
+    this.promptMode = 'template';
 
-    // Update button states
+    // Update template button states
     this.templateButtons.forEach((btn, key) => {
       btn.classList.toggle('active', key === template);
     });
 
+    // Update prompt tab buttons
+    this.promptTabButtons.forEach((btn, key) => {
+      btn.classList.toggle('active', key === 'template');
+    });
+
+    // Update prompt preview
+    this.updatePromptPreview();
+
     // Update voice selection for dialogue mode
     this.updateVoiceSelection();
+  }
+
+  private selectPromptMode(mode: PromptMode) {
+    this.promptMode = mode;
+
+    // Update tab button states
+    this.promptTabButtons.forEach((btn, key) => {
+      btn.classList.toggle('active', key === mode);
+    });
+
+    // Update prompt preview
+    this.updatePromptPreview();
+  }
+
+  private updatePromptPreview() {
+    if (!this.promptPreviewContainer) return;
+    this.promptPreviewContainer.empty();
+
+    if (this.promptMode === 'template') {
+      // Show template prompt preview (read-only)
+      const templateConfig = SPEECH_TEMPLATE_CONFIGS[this.selectedTemplate];
+      const promptContent = SPEECH_TEMPLATE_PROMPTS[this.selectedTemplate] || '';
+
+      const previewBox = this.promptPreviewContainer.createDiv({ cls: 'prompt-preview-box' });
+
+      const titleLine = previewBox.createDiv({ cls: 'prompt-title' });
+      titleLine.createEl('span', { text: `[${templateConfig.nameKo}]` });
+
+      const contentPreview = previewBox.createEl('div', {
+        cls: 'prompt-content',
+        text: promptContent.substring(0, 300) + (promptContent.length > 300 ? '...' : '')
+      });
+    } else {
+      // Show custom prompt editor
+      const customEditor = this.promptPreviewContainer.createEl('textarea', {
+        cls: 'custom-prompt-editor',
+        attr: {
+          placeholder: '커스텀 프롬프트를 입력하세요...\n\n예시:\n다음 내용을 친근한 말투로 요약해주세요.\n핵심 포인트를 3개로 정리하고, 마지막에 결론을 추가해주세요.'
+        }
+      });
+      customEditor.value = this.customPrompt;
+      customEditor.oninput = () => {
+        this.customPrompt = customEditor.value;
+      };
+    }
   }
 
   private updateVoiceSelection() {
@@ -414,7 +500,8 @@ export class SpeechOptionsModal extends Modal {
       voice: this.selectedVoice,
       dialogueVoices: this.getDialogueVoices(),
       targetDuration: this.targetDuration,
-      uploadToDrive: this.uploadToDrive
+      uploadToDrive: this.uploadToDrive,
+      customPrompt: this.promptMode === 'custom' ? this.customPrompt : undefined
     });
     this.close();
   }
@@ -423,7 +510,7 @@ export class SpeechOptionsModal extends Modal {
     const style = document.createElement('style');
     style.textContent = `
       .nanobanana-speech-options {
-        width: 600px;
+        width: 650px;
         max-width: 95vw;
         padding: 20px;
       }
@@ -438,7 +525,7 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .section {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
 
       .nanobanana-speech-options .section-label {
@@ -516,45 +603,143 @@ export class SpeechOptionsModal extends Modal {
         margin-top: 6px;
       }
 
+      /* Template Buttons - New Style */
       .nanobanana-speech-options .template-buttons {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 10px;
         margin-top: 10px;
       }
 
       .nanobanana-speech-options .template-btn {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 6px 12px;
-        border-radius: 6px;
+        padding: 0;
+        border-radius: 8px;
         border: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         cursor: pointer;
         transition: all 0.15s ease;
-        font-size: 13px;
+        overflow: hidden;
       }
 
       .nanobanana-speech-options .template-btn:hover {
-        background: var(--background-modifier-hover);
         border-color: var(--interactive-accent);
       }
 
       .nanobanana-speech-options .template-btn.active {
         background: var(--interactive-accent);
-        color: var(--text-on-accent);
         border-color: var(--interactive-accent);
       }
 
+      .nanobanana-speech-options .template-btn.active .template-icon-box {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .nanobanana-speech-options .template-btn.active .template-label {
+        color: var(--text-on-accent);
+      }
+
+      .nanobanana-speech-options .template-icon-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--background-primary);
+        border-right: 1px solid var(--background-modifier-border);
+      }
+
+      .nanobanana-speech-options .template-btn.active .template-icon-box {
+        border-right-color: transparent;
+      }
+
       .nanobanana-speech-options .template-icon {
-        font-size: 14px;
+        font-size: 18px;
         line-height: 1;
       }
 
       .nanobanana-speech-options .template-label {
+        padding: 8px 14px 8px 10px;
         font-size: 13px;
-        line-height: 1;
+        color: var(--text-normal);
+      }
+
+      /* Prompt Preview Section */
+      .nanobanana-speech-options .prompt-section {
+        margin-top: 16px;
+      }
+
+      .nanobanana-speech-options .prompt-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--background-modifier-border);
+        margin-bottom: 0;
+      }
+
+      .nanobanana-speech-options .prompt-tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 14px;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: all 0.15s ease;
+      }
+
+      .nanobanana-speech-options .prompt-tab-btn:hover {
+        color: var(--text-normal);
+      }
+
+      .nanobanana-speech-options .prompt-tab-btn.active {
+        color: var(--interactive-accent);
+        border-bottom-color: var(--interactive-accent);
+      }
+
+      .nanobanana-speech-options .prompt-preview-container {
+        background: var(--background-secondary);
+        border: 1px solid var(--background-modifier-border);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        min-height: 100px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+
+      .nanobanana-speech-options .prompt-preview-box {
+        padding: 12px;
+      }
+
+      .nanobanana-speech-options .prompt-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--text-normal);
+      }
+
+      .nanobanana-speech-options .prompt-content {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .nanobanana-speech-options .custom-prompt-editor {
+        width: 100%;
+        min-height: 100px;
+        max-height: 150px;
+        padding: 12px;
+        border: none;
+        background: transparent;
+        font-family: var(--font-text);
+        font-size: 13px;
+        line-height: 1.5;
+        resize: none;
+        color: var(--text-normal);
+      }
+
+      .nanobanana-speech-options .custom-prompt-editor:focus {
+        outline: none;
       }
 
       .nanobanana-speech-options .settings-section .setting-item {
