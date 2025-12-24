@@ -5,6 +5,7 @@ import {
   ImageStyle,
   InfographicSubStyle,
   PreferredLanguage,
+  ImageOrientation,
   IMAGE_STYLES,
   INFOGRAPHIC_SUB_STYLES,
   GeminiApiResponse
@@ -21,9 +22,10 @@ export class ImageService {
     model: string,
     style: ImageStyle,
     preferredLanguage: PreferredLanguage,
-    imageSize: string = '4K',
+    imageSize: string = '2K',
     cartoonCuts: number = 4,
-    infographicSubStyle: InfographicSubStyle = 'general'
+    infographicSubStyle: InfographicSubStyle = 'general',
+    imageOrientation: ImageOrientation = 'horizontal'
   ): Promise<ImageGenerationResult> {
     if (!apiKey) {
       throw this.createError('INVALID_API_KEY', 'Google API key is not configured');
@@ -59,10 +61,15 @@ export class ImageService {
         styleDescription = this.getCartoonStyleDescription(cartoonCuts);
       }
 
+      // Orientation instruction
+      const orientationInstruction = imageOrientation === 'horizontal'
+        ? 'IMPORTANT: Create the image in HORIZONTAL/LANDSCAPE orientation (wider than tall).'
+        : 'IMPORTANT: Create the image in VERTICAL/PORTRAIT orientation (taller than wide).';
+
       // Format the prompt with style and language
       const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE
         .replace('{style}', styleDescription)
-        .replace('{prompt}', prompt) + '\n\n' + languageInstructions[preferredLanguage];
+        .replace('{prompt}', prompt) + '\n\n' + languageInstructions[preferredLanguage] + '\n\n' + orientationInstruction;
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 

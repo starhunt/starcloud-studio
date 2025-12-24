@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   imageModel: 'gemini-3-pro-image-preview',
   imageStyle: 'infographic',
   infographicSubStyle: 'general',
-  imageSize: '4K',
+  imageSize: '2K',
   preferredLanguage: 'ko',
   cartoonCuts: '4',
   customCartoonCuts: 4,

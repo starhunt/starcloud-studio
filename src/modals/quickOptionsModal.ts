@@ -136,12 +136,15 @@ export class QuickOptionsModal extends Modal {
     // Cartoon Cuts Section (conditional)
     this.renderCartoonCutsSection(contentEl);
 
-    // Image Orientation Section
+    // Image Orientation & Resolution Section (same line)
     new Setting(contentEl)
-      .setName('이미지 방향')
+      .setName('이미지 설정')
       .setHeading();
 
-    const orientationContainer = contentEl.createDiv({ cls: 'orientation-container' });
+    const orientationResolutionRow = contentEl.createDiv({ cls: 'orientation-resolution-row' });
+
+    // Orientation buttons
+    const orientationContainer = orientationResolutionRow.createDiv({ cls: 'orientation-container' });
 
     const orientations: { key: ImageOrientation; icon: string; label: string }[] = [
       { key: 'horizontal', icon: '▬', label: '가로' },
@@ -161,18 +164,27 @@ export class QuickOptionsModal extends Modal {
       };
     });
 
-    // Image Size Section
-    new Setting(contentEl)
-      .setName('해상도')
-      .addDropdown(dropdown => {
-        dropdown.addOption('1K', '1K (1024px)');
-        dropdown.addOption('2K', '2K (2048px)');
-        dropdown.addOption('4K', '4K (4096px)');
-        dropdown.setValue(this.result.imageSize);
-        dropdown.onChange((value: ImageSize) => {
-          this.result.imageSize = value;
-        });
-      });
+    // Resolution dropdown
+    const resolutionContainer = orientationResolutionRow.createDiv({ cls: 'resolution-container' });
+    resolutionContainer.createEl('span', { text: '해상도:', cls: 'resolution-label' });
+    const resolutionSelect = resolutionContainer.createEl('select', { cls: 'resolution-select' });
+
+    const resolutionOptions = [
+      { value: '1K', label: '1K (1024px)' },
+      { value: '2K', label: '2K (2048px)' },
+      { value: '4K', label: '4K (4096px)' }
+    ];
+
+    resolutionOptions.forEach(opt => {
+      const option = resolutionSelect.createEl('option', { value: opt.value, text: opt.label });
+      if (opt.value === this.result.imageSize) {
+        option.selected = true;
+      }
+    });
+
+    resolutionSelect.onchange = () => {
+      this.result.imageSize = resolutionSelect.value as ImageSize;
+    };
 
     // Action Buttons
     const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
@@ -237,7 +249,7 @@ export class QuickOptionsModal extends Modal {
     let orientationHeading: Element | undefined;
     for (const item of Array.from(settingsItems)) {
       const name = item.querySelector('.setting-item-name');
-      if (name && name.textContent === '이미지 방향') {
+      if (name && name.textContent === '이미지 설정') {
         orientationHeading = item;
         break;
       }
@@ -491,18 +503,24 @@ export class QuickOptionsModal extends Modal {
         font-weight: 500;
       }
 
-      /* Orientation Buttons */
+      /* Orientation & Resolution Row */
+      .orientation-resolution-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
       .orientation-container {
         display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 6px;
       }
 
       .orientation-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 16px;
+        padding: 6px 14px;
         border: 1px solid var(--background-modifier-border);
         border-radius: 6px;
         cursor: pointer;
@@ -527,6 +545,26 @@ export class QuickOptionsModal extends Modal {
       .orientation-label {
         font-size: 12px;
         font-weight: 500;
+      }
+
+      .resolution-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .resolution-label {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .resolution-select {
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 4px;
+        background: var(--background-primary);
+        color: var(--text-normal);
       }
 
       /* Substyle Grid */

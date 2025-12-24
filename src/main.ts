@@ -420,7 +420,8 @@ export default class StarCloudStudioPlugin extends Plugin {
           this.settings.preferredLanguage,
           options.imageSize,
           cartoonCuts,
-          options.infographicSubStyle
+          options.infographicSubStyle,
+          options.imageOrientation
         ),
         this.settings.autoRetryCount
       );
