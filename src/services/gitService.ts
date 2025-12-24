@@ -1,7 +1,11 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
+const copyFileAsync = promisify(fs.copyFile);
+const mkdirAsync = promisify(fs.mkdir);
 
 export interface GitConfig {
   repoPath: string;
@@ -25,6 +29,7 @@ export class GitService {
 
   /**
    * Commit and push a single file to the repository
+   * If the file is not in the repo, it will be copied there first
    */
   async commitAndPush(filePath: string, commitMessage: string): Promise<GitResult> {
     try {
@@ -35,13 +40,27 @@ export class GitService {
       }
 
       console.log('[GitService] Starting commit and push...');
-      console.log('[GitService] File path:', filePath);
+      console.log('[GitService] Source file path:', filePath);
       console.log('[GitService] Repo path:', repoPath);
       console.log('[GitService] Branch:', branch);
 
-      // Get relative path from repo root
-      const relativePath = this.getRelativePath(filePath, repoPath);
-      console.log('[GitService] Relative path:', relativePath);
+      // Check if file is already in the repo
+      const normalizedFilePath = filePath.replace(/\\/g, '/');
+      const normalizedRepoPath = repoPath.replace(/\\/g, '/');
+      const isFileInRepo = normalizedFilePath.startsWith(normalizedRepoPath);
+
+      let relativePath: string;
+
+      if (isFileInRepo) {
+        // File is already in repo, just get relative path
+        relativePath = normalizedFilePath.substring(normalizedRepoPath.length + 1);
+        console.log('[GitService] File is in repo, relative path:', relativePath);
+      } else {
+        // File is not in repo, need to copy it
+        console.log('[GitService] File is NOT in repo, copying...');
+        relativePath = await this.copyFileToRepo(filePath, repoPath);
+        console.log('[GitService] Copied to repo, relative path:', relativePath);
+      }
 
       // Stage the file
       console.log('[GitService] Staging file...');
@@ -190,6 +209,49 @@ export class GitService {
     console.log('[GitService] Pushing with token authentication to branch:', branch);
     // Quote the URL to handle special characters in token
     await this.execGit(`push "${authenticatedUrl}" "${branch}"`, repoPath);
+  }
+
+  /**
+   * Copy a file from outside the repo into the repo
+   * Preserves year/month directory structure
+   * Returns the relative path within the repo
+   */
+  private async copyFileToRepo(sourcePath: string, repoPath: string): Promise<string> {
+    const normalizedSource = sourcePath.replace(/\\/g, '/');
+    const fileName = path.basename(normalizedSource);
+
+    // Extract year/month from source path if present
+    const dateMatch = normalizedSource.match(/(\d{4})\/(\d{2})\/[^/]+$/);
+
+    let targetRelativePath: string;
+
+    if (dateMatch) {
+      // Preserve year/month structure
+      targetRelativePath = `${dateMatch[1]}/${dateMatch[2]}/${fileName}`;
+    } else {
+      // Use current date for structure
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      targetRelativePath = `${year}/${month}/${fileName}`;
+    }
+
+    const targetAbsolutePath = path.join(repoPath, targetRelativePath);
+    const targetDir = path.dirname(targetAbsolutePath);
+
+    console.log('[GitService] Copying file:');
+    console.log('[GitService]   Source:', sourcePath);
+    console.log('[GitService]   Target:', targetAbsolutePath);
+
+    // Ensure target directory exists
+    await mkdirAsync(targetDir, { recursive: true });
+
+    // Copy the file
+    await copyFileAsync(sourcePath, targetAbsolutePath);
+
+    console.log('[GitService] File copied successfully');
+
+    return targetRelativePath;
   }
 
   /**

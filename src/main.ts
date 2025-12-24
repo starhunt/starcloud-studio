@@ -439,11 +439,13 @@ export default class StarCloudStudioPlugin extends Plugin {
 
       const fileName = this.generateFileName(noteFile.basename);
 
+      // Use Data subfolder for images
+      const driveImageFolder = `${this.settings.driveFolder || 'StarCloud'}/Data`;
       const uploadResult = await this.driveUploadService.uploadImage(
         imageResult.imageData,
         imageResult.mimeType,
         fileName,
-        this.settings.driveFolder,
+        driveImageFolder,
         this.settings.organizeFoldersByDate,
         (progress) => {
           progressModal?.updateProgress({
@@ -745,7 +747,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       const slidePath = await this.fileService.saveSlide(
         result.htmlContent,
         noteFile,
-        this.settings.slidesRootPath || '999-Slides',
+        this.settings.slidesRootPath || 'StarCloud/Slide',
         result.title
       );
 
@@ -915,11 +917,13 @@ export default class StarCloudStudioPlugin extends Plugin {
       const fileName = this.sanitizePptxFileName(pptxResult.title) + '.pptx';
       const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
+      // Use Slide subfolder for PPTX
+      const driveSlideFolder = `${this.settings.driveFolder || 'StarCloud'}/Slide`;
       const uploadResult = await this.driveUploadService.uploadBuffer(
         pptxResult.pptxBuffer,
         mimeType,
         fileName,
-        this.settings.driveFolder || 'StarCloudStudio',
+        driveSlideFolder,
         this.settings.organizeFoldersByDate,
         (progress) => {
           progressModal?.updateProgress({
@@ -1017,11 +1021,12 @@ export default class StarCloudStudioPlugin extends Plugin {
       return;
     }
 
-    // Open upload modal
+    // Open upload modal (use Data subfolder for general uploads)
+    const driveDataFolder = `${this.settings.driveFolder || 'StarCloud'}/Data`;
     const modal = new DriveUploadModal(
       this.app,
       this.driveUploadService,
-      this.settings.driveFolder || 'StarCloudStudio',
+      driveDataFolder,
       this.settings.organizeFoldersByDate !== false,
       this.settings.showTitleInEmbed !== false,
       (result: DriveUploadModalResult) => {
@@ -1247,7 +1252,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         audioResult.audioData,
         audioResult.mimeType,
         noteFile,
-        this.settings.audioVaultFolder || 'Audio/TTS'
+        this.settings.audioVaultFolder || 'StarCloud/Audio'
       );
 
       // Step 7: Upload to Drive (optional)
@@ -1262,11 +1267,13 @@ export default class StarCloudStudioPlugin extends Plugin {
 
         const fileName = this.generateAudioFileName(noteFile.basename, options.template);
 
+        // Use Audio subfolder for audio files
+        const driveAudioFolder = `${this.settings.driveFolder || 'StarCloud'}/Audio`;
         driveResult = await this.driveUploadService.uploadBuffer(
           audioResult.audioData,
           audioResult.mimeType,
           fileName,
-          this.settings.driveFolder || 'StarCloudStudio',
+          driveAudioFolder,
           this.settings.organizeFoldersByDate,
           (progress) => {
             progressModal?.updateProgress({

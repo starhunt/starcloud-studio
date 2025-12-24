@@ -1,7 +1,7 @@
 {
   "id": "starcloud-studio",
   "name": "StarCloud Studio",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "minAppVersion": "1.0.0",
   "description": "Generate AI-powered Knowledge Posters from your notes and upload to Google Drive",
   "author": "StarHunt",

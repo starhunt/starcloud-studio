@@ -187,20 +187,6 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
       .starcloud-settings .status-disconnected {
         color: var(--text-error);
       }
-
-      .starcloud-settings .reset-btn {
-        padding: 6px 12px;
-        border-radius: 4px;
-        background: var(--background-modifier-error);
-        color: var(--text-on-accent);
-        border: none;
-        cursor: pointer;
-        font-size: 13px;
-      }
-
-      .starcloud-settings .reset-btn:hover {
-        background: var(--background-modifier-error-hover);
-      }
     `;
     containerEl.appendChild(style);
   }
@@ -211,19 +197,6 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
     const titleDiv = header.createDiv({ cls: 'settings-title' });
     titleDiv.createEl('h2', { text: 'StarCloud Studio Settings' });
     titleDiv.createSpan({ cls: 'version', text: `v${this.plugin.manifest.version}` });
-
-    const resetBtn = header.createEl('button', {
-      text: 'Reset Settings',
-      cls: 'reset-btn'
-    });
-    resetBtn.onclick = async () => {
-      const confirmed = confirm('모든 설정을 초기화하시겠습니까? (API 키는 유지됩니다)');
-      if (confirmed) {
-        // Reset non-sensitive settings
-        new Notice('설정이 초기화되었습니다');
-        this.display();
-      }
-    };
   }
 
   private createTabNavigation(containerEl: HTMLElement) {
@@ -626,10 +599,10 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
       .setName('업로드 폴더')
       .setDesc('Google Drive 내 기본 폴더 경로')
       .addText(text => text
-        .setPlaceholder('Obsidian/StarCloudStudio')
+        .setPlaceholder('StarCloud')
         .setValue(this.plugin.settings.driveFolder)
         .onChange(async (value) => {
-          this.plugin.settings.driveFolder = value;
+          this.plugin.settings.driveFolder = value || 'StarCloud';
           await this.plugin.saveSettings();
         })
       );
@@ -753,12 +726,12 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('슬라이드 루트 폴더')
-      .setDesc('생성된 HTML 슬라이드의 루트 폴더 경로 (예: 999-Slides)')
+      .setDesc('생성된 슬라이드의 로컬 저장 경로')
       .addText(text => text
-        .setPlaceholder('999-Slides')
-        .setValue(this.plugin.settings.slidesRootPath || '999-Slides')
+        .setPlaceholder('StarCloud/Slide')
+        .setValue(this.plugin.settings.slidesRootPath || 'StarCloud/Slide')
         .onChange(async (value) => {
-          this.plugin.settings.slidesRootPath = value || '999-Slides';
+          this.plugin.settings.slidesRootPath = value || 'StarCloud/Slide';
           await this.plugin.saveSettings();
         })
       );
@@ -879,47 +852,172 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
         })
       );
 
-    // View HTML System Prompt
+    // HTML Prompts Section
     new Setting(containerEl)
-      .setName('HTML 프롬프트 보기')
-      .setDesc('HTML 슬라이드 생성 시스템 프롬프트 보기')
-      .addButton(button => button
-        .setButtonText('세로 스크롤')
-        .onClick(() => {
-          const promptConfig = BUILTIN_HTML_PROMPTS['vertical-scroll'];
-          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
-          modal.open();
-        })
-      )
-      .addButton(button => button
-        .setButtonText('프레젠테이션')
-        .onClick(() => {
-          const promptConfig = BUILTIN_HTML_PROMPTS['presentation'];
-          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
-          modal.open();
-        })
-      );
+      .setName('HTML 프롬프트 관리')
+      .setHeading();
 
-    // View PPTX System Prompt
+    // HTML: Vertical Scroll Prompt
+    this.createPromptEditSection(
+      containerEl,
+      'HTML 세로 스크롤 프롬프트',
+      'vertical-scroll 스타일의 HTML 슬라이드 생성 프롬프트',
+      this.plugin.settings.htmlVerticalScrollPromptOverride || BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
+      BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt,
+      async (value) => {
+        this.plugin.settings.htmlVerticalScrollPromptOverride = value;
+        await this.plugin.saveSettings();
+      }
+    );
+
+    // HTML: Presentation Prompt
+    this.createPromptEditSection(
+      containerEl,
+      'HTML 프레젠테이션 프롬프트',
+      'presentation 스타일의 HTML 슬라이드 생성 프롬프트',
+      this.plugin.settings.htmlPresentationPromptOverride || BUILTIN_HTML_PROMPTS['presentation'].prompt,
+      BUILTIN_HTML_PROMPTS['presentation'].prompt,
+      async (value) => {
+        this.plugin.settings.htmlPresentationPromptOverride = value;
+        await this.plugin.saveSettings();
+      }
+    );
+
+    // PPTX Prompts Section
     new Setting(containerEl)
-      .setName('PPTX 프롬프트 보기')
-      .setDesc('PPTX 슬라이드 생성 시스템 프롬프트 보기')
-      .addButton(button => button
-        .setButtonText('고정 레이아웃')
-        .onClick(() => {
-          const promptConfig = BUILTIN_PPTX_PROMPTS['standard'];
-          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
-          modal.open();
-        })
-      )
-      .addButton(button => button
-        .setButtonText('유연 배치')
-        .onClick(() => {
-          const promptConfig = BUILTIN_PPTX_PROMPTS['flexible'];
-          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
-          modal.open();
-        })
-      );
+      .setName('PPTX 프롬프트 관리')
+      .setHeading();
+
+    // PPTX: Standard Prompt
+    this.createPromptEditSection(
+      containerEl,
+      'PPTX 고정 레이아웃 프롬프트',
+      '고정 레이아웃 스타일의 PPTX 슬라이드 생성 프롬프트',
+      this.plugin.settings.pptxStandardPromptOverride || BUILTIN_PPTX_PROMPTS['standard'].prompt,
+      BUILTIN_PPTX_PROMPTS['standard'].prompt,
+      async (value) => {
+        this.plugin.settings.pptxStandardPromptOverride = value;
+        await this.plugin.saveSettings();
+      }
+    );
+
+    // PPTX: Flexible Prompt
+    this.createPromptEditSection(
+      containerEl,
+      'PPTX 유연 배치 프롬프트',
+      '유연 배치 스타일의 PPTX 슬라이드 생성 프롬프트',
+      this.plugin.settings.pptxFlexiblePromptOverride || BUILTIN_PPTX_PROMPTS['flexible'].prompt,
+      BUILTIN_PPTX_PROMPTS['flexible'].prompt,
+      async (value) => {
+        this.plugin.settings.pptxFlexiblePromptOverride = value;
+        await this.plugin.saveSettings();
+      }
+    );
+  }
+
+  private createPromptEditSection(
+    containerEl: HTMLElement,
+    title: string,
+    description: string,
+    currentValue: string,
+    defaultValue: string,
+    onChange: (value: string) => Promise<void>
+  ) {
+    const sectionEl = containerEl.createDiv({ cls: 'starcloud-prompt-edit-section' });
+
+    // Add inline styles for the section
+    sectionEl.style.cssText = `
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: var(--background-secondary);
+    `;
+
+    // Header with title and buttons
+    const headerEl = sectionEl.createDiv({ cls: 'prompt-edit-header' });
+    headerEl.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    `;
+
+    const titleContainer = headerEl.createDiv();
+    titleContainer.createEl('h4', { text: title });
+    titleContainer.querySelector('h4')!.style.cssText = `margin: 0 0 4px 0; font-size: 14px;`;
+    titleContainer.createEl('p', { text: description });
+    titleContainer.querySelector('p')!.style.cssText = `margin: 0; font-size: 12px; color: var(--text-muted);`;
+
+    const buttonContainer = headerEl.createDiv();
+    buttonContainer.style.cssText = `display: flex; gap: 8px;`;
+
+    // Load Default Button
+    const isModified = currentValue !== defaultValue;
+    const loadDefaultBtn = buttonContainer.createEl('button', {
+      text: '기본값 불러오기',
+      cls: isModified ? '' : 'mod-muted'
+    });
+    loadDefaultBtn.style.cssText = `
+      font-size: 12px;
+      padding: 4px 12px;
+      cursor: pointer;
+    `;
+    loadDefaultBtn.disabled = !isModified;
+
+    // Textarea
+    const textAreaEl = sectionEl.createEl('textarea');
+    textAreaEl.value = currentValue;
+    textAreaEl.style.cssText = `
+      width: 100%;
+      min-height: 200px;
+      max-height: 400px;
+      font-family: var(--font-monospace);
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 12px;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      background: var(--background-primary);
+      color: var(--text-normal);
+      resize: vertical;
+    `;
+
+    // Status indicator
+    const statusEl = sectionEl.createDiv();
+    statusEl.style.cssText = `
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    `;
+    statusEl.textContent = isModified ? '✏️ 사용자 수정됨' : '✓ 기본값 사용 중';
+
+    // Event handlers
+    textAreaEl.onchange = async () => {
+      const newValue = textAreaEl.value;
+      // If user clears or matches default, reset to empty (use default)
+      if (newValue === defaultValue || newValue.trim() === '') {
+        await onChange('');
+        loadDefaultBtn.disabled = true;
+        loadDefaultBtn.classList.add('mod-muted');
+        statusEl.textContent = '✓ 기본값 사용 중';
+        textAreaEl.value = defaultValue;
+      } else {
+        await onChange(newValue);
+        loadDefaultBtn.disabled = false;
+        loadDefaultBtn.classList.remove('mod-muted');
+        statusEl.textContent = '✏️ 사용자 수정됨';
+      }
+    };
+
+    loadDefaultBtn.onclick = async () => {
+      textAreaEl.value = defaultValue;
+      await onChange('');
+      loadDefaultBtn.disabled = true;
+      loadDefaultBtn.classList.add('mod-muted');
+      statusEl.textContent = '✓ 기본값 사용 중';
+      new Notice('기본값이 복원되었습니다');
+    };
   }
 
   private createTTSSection(containerEl: HTMLElement) {
@@ -1107,10 +1205,10 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
       .setName('오디오 저장 폴더')
       .setDesc('생성된 오디오 파일 저장 경로')
       .addText(text => text
-        .setPlaceholder('Audio/TTS')
+        .setPlaceholder('StarCloud/Audio')
         .setValue(this.plugin.settings.audioVaultFolder)
         .onChange(async (value) => {
-          this.plugin.settings.audioVaultFolder = value || 'Audio/TTS';
+          this.plugin.settings.audioVaultFolder = value || 'StarCloud/Audio';
           await this.plugin.saveSettings();
         })
       );

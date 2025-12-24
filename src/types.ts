@@ -268,6 +268,12 @@ export interface StarCloudStudioSettings {
   customPptxPrompts: SlidePromptConfig[];
   showSlidePreviewBeforeGeneration: boolean;
 
+  // Slide Prompt Overrides (user-edited prompts)
+  htmlVerticalScrollPromptOverride: string;
+  htmlPresentationPromptOverride: string;
+  pptxStandardPromptOverride: string;
+  pptxFlexiblePromptOverride: string;
+
   // Slide AI Provider (separate from default)
   slideProvider: AIProvider;
   slideModel: string;

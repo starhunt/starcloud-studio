@@ -46,10 +46,20 @@ export class SlideOptionsModal extends Modal {
   private getDefaultPrompt(format: SlideOutputFormat, htmlStyle: HtmlSlideStyle, pptxStyle: PptxSlideStyle): string {
     if (format === 'html') {
       if (htmlStyle === 'custom') return '';
-      return BUILTIN_HTML_PROMPTS[htmlStyle]?.prompt || '';
+      // Check for user override first, then fall back to built-in
+      if (htmlStyle === 'vertical-scroll') {
+        return this.settings.htmlVerticalScrollPromptOverride || BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt;
+      }
+      // htmlStyle === 'presentation'
+      return this.settings.htmlPresentationPromptOverride || BUILTIN_HTML_PROMPTS['presentation'].prompt;
     } else {
       if (pptxStyle === 'custom') return '';
-      return BUILTIN_PPTX_PROMPTS[pptxStyle]?.prompt || '';
+      // Check for user override first, then fall back to built-in
+      if (pptxStyle === 'standard') {
+        return this.settings.pptxStandardPromptOverride || BUILTIN_PPTX_PROMPTS['standard'].prompt;
+      }
+      // pptxStyle === 'flexible'
+      return this.settings.pptxFlexiblePromptOverride || BUILTIN_PPTX_PROMPTS['flexible'].prompt;
     }
   }
 
@@ -339,13 +349,23 @@ export class SlideOptionsModal extends Modal {
         const customs = this.settings.customHtmlPrompts || [];
         return customs[0]?.prompt || '';
       }
-      return BUILTIN_HTML_PROMPTS[this.result.htmlStyle]?.prompt || '';
+      // Check for user override first, then fall back to built-in
+      if (this.result.htmlStyle === 'vertical-scroll') {
+        return this.settings.htmlVerticalScrollPromptOverride || BUILTIN_HTML_PROMPTS['vertical-scroll'].prompt;
+      }
+      // htmlStyle === 'presentation'
+      return this.settings.htmlPresentationPromptOverride || BUILTIN_HTML_PROMPTS['presentation'].prompt;
     } else {
       if (this.result.pptxStyle === 'custom') {
         const customs = this.settings.customPptxPrompts || [];
         return customs[0]?.prompt || '';
       }
-      return BUILTIN_PPTX_PROMPTS[this.result.pptxStyle]?.prompt || '';
+      // Check for user override first, then fall back to built-in
+      if (this.result.pptxStyle === 'standard') {
+        return this.settings.pptxStandardPromptOverride || BUILTIN_PPTX_PROMPTS['standard'].prompt;
+      }
+      // pptxStyle === 'flexible'
+      return this.settings.pptxFlexiblePromptOverride || BUILTIN_PPTX_PROMPTS['flexible'].prompt;
     }
   }
 
@@ -355,13 +375,21 @@ export class SlideOptionsModal extends Modal {
         const customs = this.settings.customHtmlPrompts || [];
         return customs[0]?.description || '커스텀 프롬프트';
       }
-      return BUILTIN_HTML_PROMPTS[this.result.htmlStyle]?.description || '';
+      // Check if using user override
+      const isOverridden = (this.result.htmlStyle === 'vertical-scroll' && this.settings.htmlVerticalScrollPromptOverride) ||
+                           (this.result.htmlStyle === 'presentation' && this.settings.htmlPresentationPromptOverride);
+      const baseDesc = BUILTIN_HTML_PROMPTS[this.result.htmlStyle]?.description || '';
+      return isOverridden ? `${baseDesc} (사용자 수정됨)` : baseDesc;
     } else {
       if (this.result.pptxStyle === 'custom') {
         const customs = this.settings.customPptxPrompts || [];
         return customs[0]?.description || '커스텀 프롬프트';
       }
-      return BUILTIN_PPTX_PROMPTS[this.result.pptxStyle]?.description || '';
+      // Check if using user override
+      const isOverridden = (this.result.pptxStyle === 'standard' && this.settings.pptxStandardPromptOverride) ||
+                           (this.result.pptxStyle === 'flexible' && this.settings.pptxFlexiblePromptOverride);
+      const baseDesc = BUILTIN_PPTX_PROMPTS[this.result.pptxStyle]?.description || '';
+      return isOverridden ? `${baseDesc} (사용자 수정됨)` : baseDesc;
     }
   }
 

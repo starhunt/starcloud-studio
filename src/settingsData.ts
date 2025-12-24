@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   customCartoonCuts: 4,
 
   // Google Drive
-  driveFolder: 'Obsidian/StarCloudStudio',
+  driveFolder: 'StarCloud',
   organizeFoldersByDate: true,
 
   // Embedding
@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   customPromptPrefix: '',
 
   // Slide Generation
-  slidesRootPath: '999-Slides',
+  slidesRootPath: 'StarCloud/Slide',
   defaultSlideOutputFormat: 'html' as SlideOutputFormat,
   defaultHtmlSlideStyle: 'vertical-scroll' as HtmlSlideStyle,
   defaultPptxSlideStyle: 'standard' as PptxSlideStyle,
@@ -54,6 +54,12 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   customHtmlPrompts: [],
   customPptxPrompts: [],
   showSlidePreviewBeforeGeneration: true,
+
+  // Slide Prompt Overrides (empty = use built-in default)
+  htmlVerticalScrollPromptOverride: '',
+  htmlPresentationPromptOverride: '',
+  pptxStandardPromptOverride: '',
+  pptxFlexiblePromptOverride: '',
 
   // Slide AI Provider (separate from default)
   slideProvider: 'google',
@@ -78,7 +84,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   defaultTtsVoiceHostB: 'Charon',
   targetAudioDuration: 5,
   audioOutputFormat: 'mp3',
-  audioVaultFolder: 'Audio/TTS',
+  audioVaultFolder: 'StarCloud/Audio',
   showSpeechPreview: true,
 
   // Speech Script AI Provider (separate from default)
