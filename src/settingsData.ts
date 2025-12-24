@@ -1,4 +1,4 @@
-import { StarCloudStudioSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, PptxGenerationStyle, SpeechTemplate } from './types';
+import { StarCloudStudioSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, HtmlSlideStyle, PptxSlideStyle, SlideUploadDestination, SpeechTemplate } from './types';
 
 export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   // AI API Keys
@@ -47,11 +47,13 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
 
   // Slide Generation
   slidesRootPath: '999-Slides',
-  defaultSlidePromptType: 'notebooklm-summary',
-  customSlidePrompts: [],
-  showSlidePreviewBeforeGeneration: true,
   defaultSlideOutputFormat: 'html' as SlideOutputFormat,
-  defaultPptxGenerationStyle: 'standard' as PptxGenerationStyle,
+  defaultHtmlSlideStyle: 'vertical-scroll' as HtmlSlideStyle,
+  defaultPptxSlideStyle: 'standard' as PptxSlideStyle,
+  defaultSlideUploadDestination: 'drive' as SlideUploadDestination,
+  customHtmlPrompts: [],
+  customPptxPrompts: [],
+  showSlidePreviewBeforeGeneration: true,
 
   // Slide AI Provider (separate from default)
   slideProvider: 'google',
@@ -111,12 +113,13 @@ Design Requirements:
 Content to visualize:
 {prompt}`;
 
-// Slide Generation Prompts
-export const BUILTIN_SLIDE_PROMPTS: Record<SlidePromptType, SlidePromptConfig> = {
-  'notebooklm-summary': {
-    id: 'notebooklm-summary',
-    name: 'NotebookLM Summary',
-    description: 'Generate scroll-based interactive HTML infographic slides',
+// HTML Slide Generation Prompts
+export const BUILTIN_HTML_PROMPTS: Record<Exclude<HtmlSlideStyle, 'custom'>, SlidePromptConfig> = {
+  'vertical-scroll': {
+    id: 'vertical-scroll',
+    name: '세로 스크롤',
+    description: '스크롤로 탐색하는 인터랙티브 인포그래픽',
+    outputFormat: 'html',
     prompt: `당신은 복잡한 기술 문서를 시각적으로 매력적이고 이해하기 쉬운 스크롤형 인터랙티브 인포그래픽 슬라이드로 변환하는 전문가입니다.
 
 주어진 콘텐츠를 분석하여 최소 15페이지 이상의 고품질 스크롤형 인터랙티브 인포그래픽 슬라이드를 생성하세요.
@@ -137,13 +140,40 @@ export const BUILTIN_SLIDE_PROMPTS: Record<SlidePromptType, SlidePromptConfig> =
 - 반응형 디자인`,
     isBuiltIn: true
   },
-  'custom': {
-    id: 'custom',
-    name: 'Custom prompt',
-    description: 'Use your own custom prompt',
-    prompt: '',
+  'presentation': {
+    id: 'presentation',
+    name: '프레젠테이션',
+    description: '좌우 화살표로 넘기는 전통적 슬라이드',
+    outputFormat: 'html',
+    prompt: `당신은 프레젠테이션 디자인 전문가입니다. 주어진 콘텐츠를 좌우 화살표로 탐색하는 전통적인 슬라이드 형태의 HTML 프레젠테이션으로 변환합니다.
+
+주어진 콘텐츠를 분석하여 최소 15슬라이드 이상의 고품질 프레젠테이션을 생성하세요.
+
+구조:
+1. 타이틀 슬라이드 (1장)
+2. 목차/개요 슬라이드 (1장)
+3. 핵심 개념 소개 (2-3장)
+4. 주요 내용 전개 (5-8장)
+5. 심층 분석 (3-5장)
+6. 결론 및 요약 (1-2장)
+
+기술적 요구사항:
+- 단일 HTML 파일로 출력
+- 좌우 화살표 키로 슬라이드 탐색
+- 슬라이드 번호 및 진행률 표시
+- 터치 스와이프 지원
+- 다크/라이트 모드 지원
+- 반응형 디자인 (16:9 비율 유지)
+- 부드러운 슬라이드 전환 애니메이션
+- Chart.js를 활용한 데이터 시각화`,
     isBuiltIn: true
   }
+};
+
+// Legacy: 이전 버전 호환을 위한 별칭
+export const BUILTIN_SLIDE_PROMPTS: Record<SlidePromptType, SlidePromptConfig> = {
+  'notebooklm-summary': { ...BUILTIN_HTML_PROMPTS['vertical-scroll'], id: 'notebooklm-summary', name: 'NotebookLM Summary', outputFormat: 'html' },
+  'custom': { id: 'custom', name: 'Custom prompt', description: 'Use your own custom prompt', prompt: '', outputFormat: 'html', isBuiltIn: true }
 };
 
 // PPTX Generation System Prompt - Educational/Learning Style (v2)
@@ -577,6 +607,26 @@ export const PPTX_FLEXIBLE_SYSTEM_PROMPT = `# Flexible PPTX 슬라이드 생성 
 5. 색상은 **# 없이** hex 값만 (예: "3B82F6")
 6. 좌표(x, y)와 크기(w, h)는 **inch 단위 숫자**
 7. **"Q&A", "감사합니다", "Thank You" 같은 마무리 슬라이드는 생성하지 않습니다** - 요약 슬라이드로 마무리`;
+
+// PPTX Slide Generation Prompts
+export const BUILTIN_PPTX_PROMPTS: Record<Exclude<PptxSlideStyle, 'custom'>, SlidePromptConfig> = {
+  'standard': {
+    id: 'standard',
+    name: '고정 레이아웃',
+    description: '10가지 슬라이드 타입 기반 표준 구조',
+    outputFormat: 'pptx',
+    prompt: PPTX_SYSTEM_PROMPT,
+    isBuiltIn: true
+  },
+  'flexible': {
+    id: 'flexible',
+    name: '유연 배치',
+    description: '요소 기반 자유로운 레이아웃',
+    outputFormat: 'pptx',
+    prompt: PPTX_FLEXIBLE_SYSTEM_PROMPT,
+    isBuiltIn: true
+  }
+};
 
 // ============================================================
 // Speech Template Prompts for TTS

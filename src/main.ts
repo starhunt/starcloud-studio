@@ -656,8 +656,11 @@ export default class StarCloudStudioPlugin extends Plugin {
       return;
     }
 
+    // Check if there's a selection
+    const hasSelection = editor.somethingSelected();
+
     // Show slide options modal
-    const options = await this.showSlideOptionsModal();
+    const options = await this.showSlideOptionsModal(hasSelection);
     if (!options.confirmed) {
       return;
     }
@@ -702,8 +705,11 @@ export default class StarCloudStudioPlugin extends Plugin {
       });
 
       let content: string;
-      if (options.inputSource === 'custom-text') {
+      if (options.inputSource === 'custom') {
         content = options.customText;
+      } else if (options.inputSource === 'selection') {
+        // This function is called with editor context, need to get selection
+        content = editor.getSelection() || await this.app.vault.read(noteFile);
       } else {
         content = await this.app.vault.read(noteFile);
       }
@@ -720,7 +726,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
       });
 
-      const systemPrompt = options.selectedPromptConfig.prompt;
+      const systemPrompt = options.selectedPrompt;
       const result = await this.slideService.generateSlide(
         content,
         slideProvider,
@@ -845,8 +851,10 @@ export default class StarCloudStudioPlugin extends Plugin {
       });
 
       let content: string;
-      if (options.inputSource === 'custom-text') {
+      if (options.inputSource === 'custom') {
         content = options.customText;
+      } else if (options.inputSource === 'selection') {
+        content = editor.getSelection() || await this.app.vault.read(noteFile);
       } else {
         content = await this.app.vault.read(noteFile);
       }
@@ -863,8 +871,8 @@ export default class StarCloudStudioPlugin extends Plugin {
         details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
       });
 
-      const systemPrompt = options.selectedPromptConfig.prompt;
-      const isFlexibleMode = options.pptxGenerationStyle === 'flexible';
+      const systemPrompt = options.selectedPrompt;
+      const isFlexibleMode = options.pptxStyle === 'flexible';
 
       // Generate PPTX file based on mode
       progressModal?.updateProgress({
@@ -987,16 +995,13 @@ export default class StarCloudStudioPlugin extends Plugin {
 `.trim();
   }
 
-  private showSlideOptionsModal(): Promise<SlideOptionsResult> {
+  private showSlideOptionsModal(hasSelection: boolean): Promise<SlideOptionsResult> {
     return new Promise((resolve) => {
       const modal = new SlideOptionsModal(
         this.app,
-        this.settings.defaultSlidePromptType || 'notebooklm-summary',
-        this.settings.customSlidePrompts || [],
-        (result) => resolve(result),
-        this.settings.preferredLanguage,
-        this.settings.defaultSlideOutputFormat || 'html',
-        this.settings.defaultPptxGenerationStyle || 'standard'
+        this.settings,
+        hasSelection,
+        (result) => resolve(result)
       );
       modal.open();
     });

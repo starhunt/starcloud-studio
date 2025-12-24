@@ -16,6 +16,10 @@ import {
   EmbedSize,
   EMBED_SIZES,
   SlidePromptType,
+  SlideOutputFormat,
+  HtmlSlideStyle,
+  PptxSlideStyle,
+  SlideUploadDestination,
   TTSProvider,
   TTS_PROVIDER_CONFIGS,
   SpeechTemplate,
@@ -23,7 +27,7 @@ import {
   GEMINI_TTS_VOICES,
   AudioFormat
 } from './types';
-import { BUILTIN_SLIDE_PROMPTS } from './settingsData';
+import { BUILTIN_SLIDE_PROMPTS, BUILTIN_HTML_PROMPTS, BUILTIN_PPTX_PROMPTS } from './settingsData';
 
 type SettingsTab = 'general' | 'ai' | 'image' | 'slide' | 'tts' | 'advanced';
 
@@ -806,24 +810,59 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
         })
       );
 
-    // Default Slide Prompt Type
+    // Default Output Format
     new Setting(containerEl)
-      .setName('기본 시스템 프롬프트')
-      .setDesc('슬라이드 생성의 기본 시스템 프롬프트')
+      .setName('기본 출력 형식')
+      .setDesc('슬라이드 생성의 기본 출력 형식')
       .addDropdown(dropdown => {
-        // Add built-in prompts
-        for (const [key, config] of Object.entries(BUILTIN_SLIDE_PROMPTS)) {
-          if (key !== 'custom') {
-            dropdown.addOption(key, config.name);
-          }
-        }
-        // Add custom prompts
-        for (const custom of this.plugin.settings.customSlidePrompts || []) {
-          dropdown.addOption(custom.id, `${custom.name} (커스텀)`);
-        }
-        dropdown.setValue(this.plugin.settings.defaultSlidePromptType || 'notebooklm-summary');
-        dropdown.onChange(async (value: SlidePromptType) => {
-          this.plugin.settings.defaultSlidePromptType = value;
+        dropdown.addOption('html', 'HTML 슬라이드');
+        dropdown.addOption('pptx', 'PowerPoint (PPTX)');
+        dropdown.setValue(this.plugin.settings.defaultSlideOutputFormat || 'html');
+        dropdown.onChange(async (value: SlideOutputFormat) => {
+          this.plugin.settings.defaultSlideOutputFormat = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    // Default HTML Style
+    new Setting(containerEl)
+      .setName('기본 HTML 스타일')
+      .setDesc('HTML 슬라이드 생성의 기본 스타일')
+      .addDropdown(dropdown => {
+        dropdown.addOption('vertical-scroll', '세로 스크롤');
+        dropdown.addOption('presentation', '프레젠테이션');
+        dropdown.setValue(this.plugin.settings.defaultHtmlSlideStyle || 'vertical-scroll');
+        dropdown.onChange(async (value: HtmlSlideStyle) => {
+          this.plugin.settings.defaultHtmlSlideStyle = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    // Default PPTX Style
+    new Setting(containerEl)
+      .setName('기본 PPTX 스타일')
+      .setDesc('PPTX 슬라이드 생성의 기본 스타일')
+      .addDropdown(dropdown => {
+        dropdown.addOption('standard', '고정 레이아웃');
+        dropdown.addOption('flexible', '유연 배치');
+        dropdown.setValue(this.plugin.settings.defaultPptxSlideStyle || 'standard');
+        dropdown.onChange(async (value: PptxSlideStyle) => {
+          this.plugin.settings.defaultPptxSlideStyle = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    // Default Upload Destination
+    new Setting(containerEl)
+      .setName('기본 업로드 목적지')
+      .setDesc('슬라이드 생성 후 기본 업로드 위치')
+      .addDropdown(dropdown => {
+        dropdown.addOption('none', '로컬만 (업로드 안함)');
+        dropdown.addOption('drive', 'Google Drive');
+        dropdown.addOption('github', 'GitHub Pages (HTML만)');
+        dropdown.setValue(this.plugin.settings.defaultSlideUploadDestination || 'drive');
+        dropdown.onChange(async (value: SlideUploadDestination) => {
+          this.plugin.settings.defaultSlideUploadDestination = value;
           await this.plugin.saveSettings();
         });
       });
@@ -840,22 +879,43 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
         })
       );
 
-    // View/Edit System Prompt
+    // View HTML System Prompt
     new Setting(containerEl)
-      .setName('시스템 프롬프트 보기')
-      .setDesc('슬라이드 생성의 현재 시스템 프롬프트 보기 및 복사')
+      .setName('HTML 프롬프트 보기')
+      .setDesc('HTML 슬라이드 생성 시스템 프롬프트 보기')
       .addButton(button => button
-        .setButtonText('프롬프트 보기')
+        .setButtonText('세로 스크롤')
         .onClick(() => {
-          const promptType = this.plugin.settings.defaultSlidePromptType || 'notebooklm-summary';
-          let promptConfig = BUILTIN_SLIDE_PROMPTS[promptType as SlidePromptType];
+          const promptConfig = BUILTIN_HTML_PROMPTS['vertical-scroll'];
+          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
+          modal.open();
+        })
+      )
+      .addButton(button => button
+        .setButtonText('프레젠테이션')
+        .onClick(() => {
+          const promptConfig = BUILTIN_HTML_PROMPTS['presentation'];
+          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
+          modal.open();
+        })
+      );
 
-          // Check custom prompts if not found
-          if (!promptConfig) {
-            promptConfig = this.plugin.settings.customSlidePrompts?.find(p => p.id === promptType) || BUILTIN_SLIDE_PROMPTS['notebooklm-summary'];
-          }
-
-          // Create a simple modal to show the prompt
+    // View PPTX System Prompt
+    new Setting(containerEl)
+      .setName('PPTX 프롬프트 보기')
+      .setDesc('PPTX 슬라이드 생성 시스템 프롬프트 보기')
+      .addButton(button => button
+        .setButtonText('고정 레이아웃')
+        .onClick(() => {
+          const promptConfig = BUILTIN_PPTX_PROMPTS['standard'];
+          const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
+          modal.open();
+        })
+      )
+      .addButton(button => button
+        .setButtonText('유연 배치')
+        .onClick(() => {
+          const promptConfig = BUILTIN_PPTX_PROMPTS['flexible'];
           const modal = new SystemPromptViewModal(this.app, promptConfig.name, promptConfig.prompt);
           modal.open();
         })

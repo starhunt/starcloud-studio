@@ -260,11 +260,13 @@ export interface StarCloudStudioSettings {
 
   // Slide Generation
   slidesRootPath: string;
-  defaultSlidePromptType: SlidePromptType;
-  customSlidePrompts: SlidePromptConfig[];
-  showSlidePreviewBeforeGeneration: boolean;
   defaultSlideOutputFormat: SlideOutputFormat;
-  defaultPptxGenerationStyle: PptxGenerationStyle;
+  defaultHtmlSlideStyle: HtmlSlideStyle;
+  defaultPptxSlideStyle: PptxSlideStyle;
+  defaultSlideUploadDestination: SlideUploadDestination;
+  customHtmlPrompts: SlidePromptConfig[];
+  customPptxPrompts: SlidePromptConfig[];
+  showSlidePreviewBeforeGeneration: boolean;
 
   // Slide AI Provider (separate from default)
   slideProvider: AIProvider;
@@ -499,13 +501,17 @@ export interface PreviewModalResult {
 // ============================================================
 
 export type SlidePromptType = 'notebooklm-summary' | 'custom';
-export type SlideInputSource = 'note' | 'custom-text';
+export type SlideInputSource = 'fullNote' | 'selection' | 'custom';
+export type HtmlSlideStyle = 'vertical-scroll' | 'presentation' | 'custom';
+export type PptxSlideStyle = 'standard' | 'flexible' | 'custom';
+export type SlideUploadDestination = 'none' | 'drive' | 'github';
 
 export interface SlidePromptConfig {
   id: string;
   name: string;
   description: string;
   prompt: string;
+  outputFormat: SlideOutputFormat;
   isBuiltIn: boolean;
 }
 
@@ -520,10 +526,11 @@ export interface SlideOptionsResult {
   confirmed: boolean;
   inputSource: SlideInputSource;
   customText: string;
-  promptType: SlidePromptType | string;
-  selectedPromptConfig: SlidePromptConfig;
   outputFormat: SlideOutputFormat;
-  pptxGenerationStyle: PptxGenerationStyle;
+  htmlStyle: HtmlSlideStyle;
+  pptxStyle: PptxSlideStyle;
+  selectedPrompt: string;
+  uploadDestination: SlideUploadDestination;
 }
 
 // ============================================================
