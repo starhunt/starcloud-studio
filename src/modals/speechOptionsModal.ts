@@ -658,8 +658,11 @@ export class SpeechOptionsModal extends Modal {
       }
 
       .nanobanana-speech-options .template-icon {
-        font-size: 16px;
+        font-size: 14px;
         line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         background: none !important;
         border: none !important;
         padding: 0 !important;
@@ -668,6 +671,9 @@ export class SpeechOptionsModal extends Modal {
 
       .nanobanana-speech-options .template-label {
         font-size: 13px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
         background: none !important;
       }
 
