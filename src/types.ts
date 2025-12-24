@@ -161,6 +161,8 @@ export const INFOGRAPHIC_SUB_STYLES: Record<InfographicSubStyle, InfographicSubS
 
 export type ImageSize = '1K' | '2K' | '4K';
 
+export type ImageOrientation = 'horizontal' | 'vertical';
+
 export type CartoonCuts = '4' | '6' | '8' | 'custom';
 
 // ============================================================
@@ -481,6 +483,7 @@ export interface QuickOptionsResult {
   imageStyle: ImageStyle;
   infographicSubStyle: InfographicSubStyle;
   imageSize: ImageSize;
+  imageOrientation: ImageOrientation;
   cartoonCuts: CartoonCuts;
   customCartoonCuts: number;
 }

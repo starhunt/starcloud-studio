@@ -7,6 +7,7 @@ import {
   InfographicSubStyle,
   INFOGRAPHIC_SUB_STYLES,
   ImageSize,
+  ImageOrientation,
   CartoonCuts,
   StarCloudStudioSettings
 } from '../types';
@@ -33,6 +34,7 @@ export class QuickOptionsModal extends Modal {
       imageStyle: settings.imageStyle,
       infographicSubStyle: settings.infographicSubStyle,
       imageSize: settings.imageSize,
+      imageOrientation: 'horizontal',
       cartoonCuts: settings.cartoonCuts,
       customCartoonCuts: settings.customCartoonCuts
     };
@@ -52,34 +54,36 @@ export class QuickOptionsModal extends Modal {
 
     const inputSourceContainer = contentEl.createDiv({ cls: 'input-source-container' });
 
-    // Full Note Option
-    const fullNoteOption = inputSourceContainer.createDiv({
-      cls: `input-source-option ${this.result.inputSource === 'fullNote' ? 'selected' : ''}`
-    });
-    fullNoteOption.createDiv({ cls: 'option-icon', text: '📄' });
-    fullNoteOption.createDiv({ cls: 'option-title', text: '전체 노트' });
-    fullNoteOption.createDiv({ cls: 'option-desc', text: '노트 전체 내용 사용' });
+    const inputSources: { key: InputSource; icon: string; label: string; desc: string }[] = [
+      { key: 'fullNote', icon: '📄', label: '전체 노트', desc: '노트 전체 내용' },
+      { key: 'selection', icon: '✂️', label: '선택 영역', desc: '선택된 텍스트' },
+      { key: 'custom', icon: '✏️', label: '직접 입력', desc: '텍스트 입력' }
+    ];
 
-    // Selection Option
-    const selectionOption = inputSourceContainer.createDiv({
-      cls: `input-source-option ${this.result.inputSource === 'selection' ? 'selected' : ''} ${!this.hasSelection ? 'disabled' : ''}`
-    });
-    selectionOption.createDiv({ cls: 'option-icon', text: '✂️' });
-    selectionOption.createDiv({ cls: 'option-title', text: '선택 영역' });
-    selectionOption.createDiv({ cls: 'option-desc', text: '선택된 텍스트만 사용' });
-    if (!this.hasSelection) {
-      selectionOption.createDiv({ cls: 'option-hint', text: '(텍스트를 선택해주세요)' });
-    }
+    const inputSourceButtons: Map<InputSource, HTMLElement> = new Map();
 
-    // Custom Input Option
-    const customOption = inputSourceContainer.createDiv({
-      cls: `input-source-option ${this.result.inputSource === 'custom' ? 'selected' : ''}`
-    });
-    customOption.createDiv({ cls: 'option-icon', text: '✏️' });
-    customOption.createDiv({ cls: 'option-title', text: '직접 입력' });
-    customOption.createDiv({ cls: 'option-desc', text: '텍스트 직접 입력' });
+    inputSources.forEach(source => {
+      const isDisabled = source.key === 'selection' && !this.hasSelection;
+      const btn = inputSourceContainer.createDiv({
+        cls: `source-btn ${this.result.inputSource === source.key ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`
+      });
+      btn.createEl('span', { text: source.icon, cls: 'source-icon' });
+      const textDiv = btn.createDiv({ cls: 'source-text' });
+      textDiv.createEl('span', { text: source.label, cls: 'source-label' });
+      textDiv.createEl('span', { text: source.desc, cls: 'source-desc' });
 
-    // Custom Input TextArea (shown when custom is selected)
+      if (isDisabled) {
+        textDiv.createEl('span', { text: '(선택 필요)', cls: 'source-hint' });
+      }
+
+      inputSourceButtons.set(source.key, btn);
+
+      if (!isDisabled) {
+        btn.onclick = () => this.selectInputSource(source.key, inputSourceButtons, customInputContainer);
+      }
+    });
+
+    // Custom Input TextArea
     const customInputContainer = contentEl.createDiv({ cls: 'custom-input-container' });
     if (this.result.inputSource !== 'custom') {
       customInputContainer.style.display = 'none';
@@ -87,7 +91,7 @@ export class QuickOptionsModal extends Modal {
     this.customInputTextArea = customInputContainer.createEl('textarea', {
       cls: 'custom-input-textarea',
       attr: {
-        rows: '6',
+        rows: '4',
         placeholder: '포스터로 만들 내용을 직접 입력하세요...'
       }
     });
@@ -98,25 +102,12 @@ export class QuickOptionsModal extends Modal {
       }
     };
 
-    // Click handlers
-    fullNoteOption.onclick = () => {
-      this.selectInputSourceWithCustom('fullNote', fullNoteOption, selectionOption, customOption, customInputContainer);
-    };
-    if (this.hasSelection) {
-      selectionOption.onclick = () => {
-        this.selectInputSourceWithCustom('selection', fullNoteOption, selectionOption, customOption, customInputContainer);
-      };
-    }
-    customOption.onclick = () => {
-      this.selectInputSourceWithCustom('custom', fullNoteOption, selectionOption, customOption, customInputContainer);
-    };
-
     // Image Style Section
     new Setting(contentEl)
       .setName('이미지 스타일')
       .setHeading();
 
-    const styleGrid = contentEl.createDiv({ cls: 'style-grid' });
+    const styleContainer = contentEl.createDiv({ cls: 'style-container' });
 
     const styleOptions: { key: ImageStyle; icon: string; name: string }[] = [
       { key: 'infographic', icon: '📊', name: '인포그래픽' },
@@ -127,13 +118,16 @@ export class QuickOptionsModal extends Modal {
       { key: 'cartoon', icon: '🎬', name: '카툰' }
     ];
 
+    const styleButtons: Map<ImageStyle, HTMLElement> = new Map();
+
     styleOptions.forEach(style => {
-      const styleCard = styleGrid.createDiv({
-        cls: `style-card ${this.result.imageStyle === style.key ? 'selected' : ''}`
+      const btn = styleContainer.createDiv({
+        cls: `style-btn ${this.result.imageStyle === style.key ? 'active' : ''}`
       });
-      styleCard.createDiv({ cls: 'style-icon', text: style.icon });
-      styleCard.createDiv({ cls: 'style-name', text: style.name });
-      styleCard.onclick = () => this.selectStyle(style.key, styleGrid);
+      btn.createEl('span', { text: style.icon, cls: 'style-icon' });
+      btn.createEl('span', { text: style.name, cls: 'style-label' });
+      styleButtons.set(style.key, btn);
+      btn.onclick = () => this.selectStyle(style.key, styleButtons);
     });
 
     // Infographic Sub-Style Section (conditional)
@@ -141,6 +135,31 @@ export class QuickOptionsModal extends Modal {
 
     // Cartoon Cuts Section (conditional)
     this.renderCartoonCutsSection(contentEl);
+
+    // Image Orientation Section
+    new Setting(contentEl)
+      .setName('이미지 방향')
+      .setHeading();
+
+    const orientationContainer = contentEl.createDiv({ cls: 'orientation-container' });
+
+    const orientations: { key: ImageOrientation; icon: string; label: string }[] = [
+      { key: 'horizontal', icon: '▬', label: '가로' },
+      { key: 'vertical', icon: '▮', label: '세로' }
+    ];
+
+    orientations.forEach(orient => {
+      const btn = orientationContainer.createDiv({
+        cls: `orientation-btn ${this.result.imageOrientation === orient.key ? 'active' : ''}`
+      });
+      btn.createEl('span', { text: orient.icon, cls: 'orientation-icon' });
+      btn.createEl('span', { text: orient.label, cls: 'orientation-label' });
+      btn.onclick = () => {
+        this.result.imageOrientation = orient.key;
+        orientationContainer.querySelectorAll('.orientation-btn').forEach(b => b.removeClass('active'));
+        btn.addClass('active');
+      };
+    });
 
     // Image Size Section
     new Setting(contentEl)
@@ -177,93 +196,66 @@ export class QuickOptionsModal extends Modal {
     this.addStyles();
   }
 
-  private selectInputSourceWithCustom(
+  private selectInputSource(
     source: InputSource,
-    fullNoteEl: HTMLElement,
-    selectionEl: HTMLElement,
-    customEl: HTMLElement,
+    buttons: Map<InputSource, HTMLElement>,
     customInputContainer: HTMLElement
   ) {
     this.result.inputSource = source;
-    fullNoteEl.removeClass('selected');
-    selectionEl.removeClass('selected');
-    customEl.removeClass('selected');
+    buttons.forEach((btn, key) => {
+      btn.removeClass('active');
+      if (key === source) btn.addClass('active');
+    });
 
-    if (source === 'fullNote') {
-      fullNoteEl.addClass('selected');
-      customInputContainer.style.display = 'none';
-    } else if (source === 'selection') {
-      selectionEl.addClass('selected');
-      customInputContainer.style.display = 'none';
-    } else if (source === 'custom') {
-      customEl.addClass('selected');
+    if (source === 'custom') {
       customInputContainer.style.display = 'block';
       if (this.customInputTextArea) {
         this.customInputTextArea.focus();
       }
+    } else {
+      customInputContainer.style.display = 'none';
     }
   }
 
-  private selectStyle(style: ImageStyle, styleGrid: HTMLElement) {
+  private selectStyle(style: ImageStyle, buttons: Map<ImageStyle, HTMLElement>) {
     this.result.imageStyle = style;
-
-    // Update visual selection
-    styleGrid.querySelectorAll('.style-card').forEach(card => {
-      card.removeClass('selected');
+    buttons.forEach((btn, key) => {
+      btn.removeClass('active');
+      if (key === style) btn.addClass('active');
     });
-    styleGrid.querySelectorAll('.style-card').forEach(card => {
-      const name = card.querySelector('.style-name')?.textContent;
-      const styleNames: Record<ImageStyle, string> = {
-        infographic: '인포그래픽',
-        poster: '포스터',
-        diagram: '다이어그램',
-        mindmap: '마인드맵',
-        timeline: '타임라인',
-        cartoon: '카툰'
-      };
-      if (name === styleNames[style]) {
-        card.addClass('selected');
-      }
-    });
-
-    // Re-render conditional sections
     this.reRenderConditionalSections();
   }
 
   private reRenderConditionalSections() {
-    // Remove existing conditional sections
     const existingInfographicSection = this.contentEl.querySelector('.infographic-substyle-section');
     if (existingInfographicSection) existingInfographicSection.remove();
 
     const existingCartoonSection = this.contentEl.querySelector('.cartoon-cuts-section');
     if (existingCartoonSection) existingCartoonSection.remove();
 
-    // Find insertion point (before resolution setting)
     const settingsItems = this.contentEl.querySelectorAll('.setting-item');
-    let resolutionSetting: Element | undefined;
+    let orientationHeading: Element | undefined;
     for (const item of Array.from(settingsItems)) {
       const name = item.querySelector('.setting-item-name');
-      if (name && name.textContent === '해상도') {
-        resolutionSetting = item;
+      if (name && name.textContent === '이미지 방향') {
+        orientationHeading = item;
         break;
       }
     }
 
-    // Re-render conditional sections
-    if (resolutionSetting && resolutionSetting.parentNode) {
+    if (orientationHeading && orientationHeading.parentNode) {
       if (this.result.imageStyle === 'infographic') {
         const subStyleSection = this.renderInfographicSubStyleSectionEl();
-        resolutionSetting.parentNode.insertBefore(subStyleSection, resolutionSetting);
+        orientationHeading.parentNode.insertBefore(subStyleSection, orientationHeading);
       } else if (this.result.imageStyle === 'cartoon') {
         const cartoonSection = this.renderCartoonCutsSectionEl();
-        resolutionSetting.parentNode.insertBefore(cartoonSection, resolutionSetting);
+        orientationHeading.parentNode.insertBefore(cartoonSection, orientationHeading);
       }
     }
   }
 
   private renderInfographicSubStyleSection(containerEl: HTMLElement) {
     if (this.result.imageStyle !== 'infographic') return;
-
     const section = this.renderInfographicSubStyleSectionEl();
     containerEl.appendChild(section);
   }
@@ -304,7 +296,6 @@ export class QuickOptionsModal extends Modal {
 
   private renderCartoonCutsSection(containerEl: HTMLElement) {
     if (this.result.imageStyle !== 'cartoon') return;
-
     const section = this.renderCartoonCutsSectionEl();
     containerEl.appendChild(section);
   }
@@ -327,7 +318,6 @@ export class QuickOptionsModal extends Modal {
       });
 
     this.reRenderCartoonCustomInput(section);
-
     return section;
   }
 
@@ -354,73 +344,104 @@ export class QuickOptionsModal extends Modal {
     const style = document.createElement('style');
     style.textContent = `
       .starcloud-quick-options-modal {
-        padding: 20px;
-        max-width: 500px;
+        padding: 16px;
+        max-width: 480px;
       }
 
+      .starcloud-quick-options-modal h2 {
+        margin-bottom: 12px;
+      }
+
+      .starcloud-quick-options-modal .setting-item-heading {
+        padding: 8px 0 4px 0;
+        margin: 0;
+      }
+
+      .starcloud-quick-options-modal .setting-item-heading .setting-item-name {
+        font-size: 13px;
+      }
+
+      /* Input Source Buttons */
       .input-source-container {
         display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 8px;
+        margin-bottom: 12px;
       }
 
-      .input-source-option {
+      .source-btn {
         flex: 1;
-        padding: 16px;
-        border: 2px solid var(--background-modifier-border);
-        border-radius: 8px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
       }
 
-      .input-source-option:hover:not(.disabled) {
+      .source-btn:hover:not(.disabled) {
         border-color: var(--interactive-accent);
         background: var(--background-modifier-hover);
       }
 
-      .input-source-option.selected {
+      .source-btn.active {
         border-color: var(--interactive-accent);
-        background: var(--background-modifier-active-hover);
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
       }
 
-      .input-source-option.disabled {
+      .source-btn.active .source-desc,
+      .source-btn.active .source-hint {
+        color: var(--text-on-accent);
+        opacity: 0.8;
+      }
+
+      .source-btn.disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
 
-      .option-icon {
-        font-size: 24px;
-        margin-bottom: 8px;
+      .source-icon {
+        font-size: 16px;
+        line-height: 1;
+        margin-top: 2px;
       }
 
-      .option-title {
+      .source-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .source-label {
+        font-size: 13px;
         font-weight: 600;
-        margin-bottom: 4px;
       }
 
-      .option-desc {
-        font-size: 12px;
+      .source-desc {
+        font-size: 11px;
         color: var(--text-muted);
       }
 
-      .option-hint {
-        font-size: 11px;
+      .source-hint {
+        font-size: 10px;
         color: var(--text-error);
-        margin-top: 4px;
       }
 
+      /* Custom Input */
       .custom-input-container {
-        margin-bottom: 20px;
+        margin-bottom: 12px;
       }
 
       .custom-input-textarea {
         width: 100%;
-        min-height: 120px;
-        padding: 12px;
+        min-height: 80px;
+        padding: 10px;
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.4;
         border: 1px solid var(--background-modifier-border);
-        border-radius: 8px;
+        border-radius: 6px;
         background: var(--background-primary);
         color: var(--text-normal);
         resize: vertical;
@@ -429,58 +450,99 @@ export class QuickOptionsModal extends Modal {
       .custom-input-textarea:focus {
         outline: none;
         border-color: var(--interactive-accent);
-        box-shadow: 0 0 0 2px var(--interactive-accent-hover);
       }
 
-      .style-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 20px;
+      /* Style Buttons */
+      .style-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
       }
 
-      .style-card {
-        padding: 12px;
-        border: 2px solid var(--background-modifier-border);
-        border-radius: 8px;
-        text-align: center;
+      .style-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
       }
 
-      .style-card:hover {
+      .style-btn:hover {
         border-color: var(--interactive-accent);
         background: var(--background-modifier-hover);
       }
 
-      .style-card.selected {
+      .style-btn.active {
         border-color: var(--interactive-accent);
-        background: var(--background-modifier-active-hover);
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
       }
 
       .style-icon {
-        font-size: 24px;
-        margin-bottom: 6px;
+        font-size: 14px;
       }
 
-      .style-name {
+      .style-label {
         font-size: 12px;
         font-weight: 500;
       }
 
+      /* Orientation Buttons */
+      .orientation-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .orientation-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .orientation-btn:hover {
+        border-color: var(--interactive-accent);
+        background: var(--background-modifier-hover);
+      }
+
+      .orientation-btn.active {
+        border-color: var(--interactive-accent);
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+      }
+
+      .orientation-icon {
+        font-size: 14px;
+      }
+
+      .orientation-label {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      /* Substyle Grid */
       .substyle-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-        margin-bottom: 20px;
+        gap: 6px;
+        margin-bottom: 12px;
       }
 
       .substyle-card {
-        padding: 10px;
-        border: 2px solid var(--background-modifier-border);
+        padding: 8px 10px;
+        border: 1px solid var(--background-modifier-border);
         border-radius: 6px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
       }
 
       .substyle-card:hover {
@@ -489,25 +551,33 @@ export class QuickOptionsModal extends Modal {
 
       .substyle-card.selected {
         border-color: var(--interactive-accent);
-        background: var(--background-modifier-active-hover);
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+      }
+
+      .substyle-card.selected .substyle-desc {
+        color: var(--text-on-accent);
+        opacity: 0.8;
       }
 
       .substyle-name {
+        font-size: 12px;
         font-weight: 500;
         margin-bottom: 2px;
       }
 
       .substyle-desc {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--text-muted);
       }
 
+      /* Modal Buttons */
       .modal-button-container {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
-        margin-top: 20px;
-        padding-top: 16px;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 12px;
         border-top: 1px solid var(--background-modifier-border);
       }
     `;
