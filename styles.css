@@ -1,36 +1,36 @@
-/* NanoBanana Cloud Plugin Styles */
+/* StarCloud Studio Plugin Styles */
 
 /* ============================================
    Drive Upload Modal
    ============================================ */
 
-.nanobanana-drive-upload-modal {
+.starcloud-drive-upload-modal {
   padding: 20px;
 }
 
-.nanobanana-modal-header {
+.starcloud-modal-header {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
 }
 
-.nanobanana-modal-icon {
+.starcloud-modal-icon {
   font-size: 24px;
 }
 
-.nanobanana-modal-title {
+.starcloud-modal-title {
   margin: 0;
   color: var(--text-accent);
 }
 
-.nanobanana-modal-desc {
+.starcloud-modal-desc {
   color: var(--text-muted);
   margin-bottom: 20px;
 }
 
 /* Drop Zone */
-.nanobanana-drop-zone {
+.starcloud-drop-zone {
   border: 2px dashed var(--background-modifier-border);
   border-radius: 12px;
   padding: 40px 20px;
@@ -40,35 +40,35 @@
   background: var(--background-secondary);
 }
 
-.nanobanana-drop-zone:hover,
-.nanobanana-drop-zone-hover {
+.starcloud-drop-zone:hover,
+.starcloud-drop-zone-hover {
   border-color: var(--text-accent);
   background: var(--background-modifier-hover);
 }
 
-.nanobanana-drop-content {
+.starcloud-drop-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.nanobanana-drop-icon {
+.starcloud-drop-icon {
   font-size: 48px;
   opacity: 0.6;
 }
 
-.nanobanana-drop-content p {
+.starcloud-drop-content p {
   margin: 0;
   color: var(--text-muted);
 }
 
 /* File Info */
-.nanobanana-file-info {
+.starcloud-file-info {
   margin-bottom: 16px;
 }
 
-.nanobanana-selected-file {
+.starcloud-selected-file {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -78,28 +78,28 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.nanobanana-file-icon {
+.starcloud-file-icon {
   font-size: 32px;
 }
 
-.nanobanana-file-details {
+.starcloud-file-details {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.nanobanana-file-name {
+.starcloud-file-name {
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.nanobanana-file-meta {
+.starcloud-file-meta {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.nanobanana-btn-clear {
+.starcloud-btn-clear {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -109,30 +109,30 @@
   border-radius: 4px;
 }
 
-.nanobanana-btn-clear:hover {
+.starcloud-btn-clear:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
 /* Size Options */
-.nanobanana-size-options {
+.starcloud-size-options {
   margin-bottom: 16px;
 }
 
-.nanobanana-label {
+.starcloud-label {
   display: block;
   font-weight: 600;
   margin-bottom: 8px;
   color: var(--text-normal);
 }
 
-.nanobanana-size-grid {
+.starcloud-size-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.nanobanana-size-option {
+.starcloud-size-option {
   padding: 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -141,30 +141,30 @@
   background: var(--background-primary);
 }
 
-.nanobanana-size-option:hover {
+.starcloud-size-option:hover {
   border-color: var(--text-accent);
   background: var(--background-secondary);
 }
 
-.nanobanana-size-option.nanobanana-selected {
+.starcloud-size-option.starcloud-selected {
   border-color: var(--text-accent);
   background: var(--background-modifier-hover);
 }
 
-.nanobanana-size-name {
+.starcloud-size-name {
   display: block;
   font-weight: 500;
   color: var(--text-normal);
   margin-bottom: 2px;
 }
 
-.nanobanana-size-dims {
+.starcloud-size-dims {
   display: block;
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.nanobanana-badge {
+.starcloud-badge {
   display: inline-block;
   font-size: 10px;
   padding: 2px 6px;
@@ -175,7 +175,7 @@
 }
 
 /* Title Toggle */
-.nanobanana-title-toggle {
+.starcloud-title-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -185,24 +185,24 @@
   margin-bottom: 16px;
 }
 
-.nanobanana-toggle-label {
+.starcloud-toggle-label {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.nanobanana-toggle-label span:first-child {
+.starcloud-toggle-label span:first-child {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.nanobanana-toggle-desc {
+.starcloud-toggle-desc {
   font-size: 12px;
   color: var(--text-muted);
 }
 
 /* Buttons */
-.nanobanana-btn {
+.starcloud-btn {
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
@@ -211,26 +211,26 @@
   transition: all 0.15s ease;
 }
 
-.nanobanana-btn-primary {
+.starcloud-btn-primary {
   background: var(--interactive-accent);
   color: white;
 }
 
-.nanobanana-btn-primary:hover {
+.starcloud-btn-primary:hover {
   background: var(--interactive-accent-hover);
 }
 
-.nanobanana-btn-cancel {
+.starcloud-btn-cancel {
   background: var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.nanobanana-btn-cancel:hover {
+.starcloud-btn-cancel:hover {
   background: var(--background-modifier-hover);
 }
 
-.nanobanana-button-row,
-.nanobanana-upload-button-container .nanobanana-button-row {
+.starcloud-button-row,
+.starcloud-upload-button-container .starcloud-button-row {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -238,38 +238,38 @@
 }
 
 /* Progress */
-.nanobanana-progress-container {
+.starcloud-progress-container {
   text-align: center;
   padding: 20px;
 }
 
-.nanobanana-progress-spinner {
+.starcloud-progress-spinner {
   width: 40px;
   height: 40px;
   border: 3px solid var(--background-modifier-border);
   border-top-color: var(--text-accent);
   border-radius: 50%;
   margin: 0 auto 16px;
-  animation: nanobanana-spin 1s linear infinite;
+  animation: starcloud-spin 1s linear infinite;
 }
 
-@keyframes nanobanana-spin {
+@keyframes starcloud-spin {
   to { transform: rotate(360deg); }
 }
 
-.nanobanana-progress-message {
+.starcloud-progress-message {
   color: var(--text-muted);
   margin-bottom: 12px;
 }
 
-.nanobanana-progress-bar {
+.starcloud-progress-bar {
   height: 6px;
   background: var(--background-modifier-border);
   border-radius: 3px;
   overflow: hidden;
 }
 
-.nanobanana-progress-fill {
+.starcloud-progress-fill {
   height: 100%;
   background: var(--text-accent);
   transition: width 0.3s ease;
@@ -277,40 +277,40 @@
 }
 
 /* Supported Formats */
-.nanobanana-formats-section {
+.starcloud-formats-section {
   margin-top: 16px;
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.nanobanana-formats-section summary {
+.starcloud-formats-section summary {
   cursor: pointer;
   padding: 8px 0;
 }
 
-.nanobanana-formats-content {
+.starcloud-formats-content {
   padding: 12px;
   background: var(--background-secondary);
   border-radius: 8px;
   margin-top: 8px;
 }
 
-.nanobanana-format-row {
+.starcloud-format-row {
   display: flex;
   gap: 8px;
   margin-bottom: 4px;
 }
 
-.nanobanana-format-label {
+.starcloud-format-label {
   font-weight: 500;
   min-width: 80px;
 }
 
-.nanobanana-format-exts {
+.starcloud-format-exts {
   color: var(--text-muted);
 }
 
 /* Hidden class */
-.nanobanana-hidden {
+.starcloud-hidden {
   display: none !important;
 }
