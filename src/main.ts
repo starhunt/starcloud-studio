@@ -14,13 +14,18 @@ import {
   AIProvider,
   PROVIDER_CONFIGS,
   TTS_PROVIDER_CONFIGS,
-  DialogueSegment
+  DialogueSegment,
+  BUILT_IN_PROVIDERS,
+  BUILT_IN_MODELS,
+  AIProviderDefinition,
+  AIModelDefinition
 } from './types';
 import { DEFAULT_SETTINGS, BUILTIN_SLIDE_PROMPTS } from './settingsData';
+import { t, setLocale, setDetectedLocale, SupportedLocale } from './i18n';
 import { StarCloudStudioSettingTab } from './settings';
 import { PromptService } from './services/promptService';
 import { ImageService } from './services/imageService';
-import { SlideService } from './services/slideService';
+import { SlideService, ProviderInfo } from './services/slideService';
 import { PptxService } from './services/pptxService';
 import { FileService } from './services/fileService';
 import { GitService } from './services/gitService';
@@ -58,6 +63,16 @@ export default class StarCloudStudioPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // Initialize i18n
+    const obsidianLocale = (this.app as any).locale
+      || window.localStorage.getItem('language')
+      || 'ko';
+    setDetectedLocale(obsidianLocale);
+
+    if (this.settings.language && this.settings.language !== 'auto') {
+      setLocale(this.settings.language as SupportedLocale);
+    }
 
     // Initialize services
     this.promptService = new PromptService();
@@ -133,27 +148,147 @@ export default class StarCloudStudioPlugin extends Plugin {
       if (view && view.editor) {
         void this.generatePoster(view.editor, view);
       } else {
-        new Notice('Please open a note first');
+        new Notice(t().notice.openNoteFirst);
       }
     });
 
-    console.log('StarCloud Studio plugin loaded');
+    console.log(t().plugin.loaded);
   }
 
   onunload() {
-    console.log('StarCloud Studio plugin unloaded');
+    console.log(t().plugin.unloaded);
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const saved = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, saved);
+
+    // Migrate v1 settings to v2 (dynamic providers)
+    if (!saved?.settingsVersion || saved.settingsVersion < 2) {
+      this.migrateToV2(saved);
+    }
+
+    // 누락된 빌트인 프로바이더/모델 자동 병합
+    this.mergeBuiltIns();
+  }
+
+  /**
+   * 새로 추가된 빌트인 프로바이더/모델을 기존 설정에 병합
+   */
+  private mergeBuiltIns() {
+    let changed = false;
+    const providers = this.settings.providers || [];
+    const models = this.settings.models || [];
+
+    // 빌트인 프로바이더: 누락 시 추가, 기존이면 isBuiltIn 플래그 동기화
+    for (const builtIn of BUILT_IN_PROVIDERS) {
+      const existing = providers.find(p => p.id === builtIn.id);
+      if (!existing) {
+        providers.push({ ...builtIn });
+        changed = true;
+      } else if (!existing.isBuiltIn) {
+        existing.isBuiltIn = true;
+        changed = true;
+      }
+    }
+
+    // 누락된 빌트인 모델 추가
+    for (const builtIn of BUILT_IN_MODELS) {
+      if (!models.find(m => m.id === builtIn.id && m.providerId === builtIn.providerId)) {
+        models.push({ ...builtIn });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.settings.providers = providers;
+      this.settings.models = models;
+      void this.saveData(this.settings);
+    }
+  }
+
+  /**
+   * Migrate v1 settings (individual API keys) to v2 (dynamic providers)
+   */
+  private migrateToV2(saved: any) {
+    if (!saved) return;
+
+    // 기존 API 키를 프로바이더에 복사
+    const keyMap: Record<string, string> = {
+      google: saved.googleApiKey || '',
+      openai: saved.openaiApiKey || '',
+      anthropic: saved.anthropicApiKey || '',
+      xai: saved.xaiApiKey || '',
+      glm: saved.glmApiKey || '',
+    };
+
+    // 빌트인 프로바이더에 기존 키 적용
+    this.settings.providers = BUILT_IN_PROVIDERS.map(p => ({
+      ...p,
+      apiKey: keyMap[p.id] || '',
+    }));
+
+    this.settings.models = [...BUILT_IN_MODELS];
+
+    // 기존 선택된 프로바이더/모델을 기본값으로 설정
+    if (saved.selectedProvider) {
+      this.settings.defaultProviderId = saved.selectedProvider;
+    }
+    if (saved.promptModel) {
+      this.settings.defaultModelId = saved.promptModel;
+    }
+
+    this.settings.settingsVersion = 2;
+
+    // 비동기로 저장 (onload에서 호출되므로 fire-and-forget)
+    void this.saveData(this.settings);
   }
 
   async saveSettings() {
+    // 프로바이더 API 키를 레거시 필드에 동기화
+    this.syncLegacyApiKeys();
+    // 기본 프로바이더/모델을 레거시 필드에 동기화
+    this.syncDefaultToLegacy();
+
     await this.saveData(this.settings);
 
     // Reinitialize Drive service when settings change
     if (this.settings.googleClientId && this.settings.googleClientSecret) {
       this.initDriveService();
+    }
+  }
+
+  /**
+   * 동적 프로바이더의 API 키를 레거시 필드에 동기화
+   * (기존 서비스 코드가 레거시 필드를 참조하므로 필요)
+   */
+  /**
+   * 기본 프로바이더/모델을 레거시 필드에 동기화
+   */
+  private syncDefaultToLegacy() {
+    if (this.settings.defaultProviderId) {
+      this.settings.selectedProvider = this.settings.defaultProviderId;
+    }
+    if (this.settings.defaultModelId) {
+      this.settings.promptModel = this.settings.defaultModelId;
+    }
+  }
+
+  private syncLegacyApiKeys() {
+    const providers = this.settings.providers || [];
+    const keyMap: Record<string, keyof StarCloudStudioSettings> = {
+      google: 'googleApiKey',
+      openai: 'openaiApiKey',
+      anthropic: 'anthropicApiKey',
+      xai: 'xaiApiKey',
+      glm: 'glmApiKey',
+    };
+
+    for (const [providerId, settingsKey] of Object.entries(keyMap)) {
+      const provider = providers.find(p => p.id === providerId);
+      if (provider) {
+        (this.settings as any)[settingsKey] = provider.apiKey;
+      }
     }
   }
 
@@ -187,7 +322,7 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   async startOAuthFlow(): Promise<boolean> {
     if (!this.settings.googleClientId || !this.settings.googleClientSecret) {
-      new Notice('Please configure Google OAuth credentials in settings first');
+      new Notice(t().notice.configureGoogleApiKey);
       return false;
     }
 
@@ -207,11 +342,11 @@ export default class StarCloudStudioPlugin extends Plugin {
       await this.saveSettings();
       this.initDriveService();
 
-      new Notice('Successfully connected to Google Drive!');
+      new Notice(t().notice.driveConnected);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      new Notice(`Failed to connect: ${message}`);
+      new Notice(t().notice.driveFailed(message));
       console.error('OAuth flow error:', error);
       return false;
     }
@@ -231,7 +366,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       this.driveUploadService.disconnect();
     }
 
-    new Notice('Disconnected from Google Drive');
+    new Notice(t().notice.driveDisconnected);
   }
 
   /**
@@ -239,13 +374,13 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   private async generatePoster(editor: Editor, view: MarkdownView) {
     if (this.isGenerating) {
-      new Notice('Generation already in progress');
+      new Notice(t().notice.generationInProgress);
       return;
     }
 
     const noteFile = view.file;
     if (!noteFile) {
-      new Notice('No active note');
+      new Notice(t().notice.noActiveNote);
       return;
     }
 
@@ -272,19 +407,19 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   private async generatePosterFromSelection(editor: Editor, view: MarkdownView) {
     if (this.isGenerating) {
-      new Notice('Generation already in progress');
+      new Notice(t().notice.generationInProgress);
       return;
     }
 
     const noteFile = view.file;
     if (!noteFile) {
-      new Notice('No active note');
+      new Notice(t().notice.noActiveNote);
       return;
     }
 
     const hasSelection = this.embedService.hasSelection(editor);
     if (!hasSelection) {
-      new Notice('Please select some text first');
+      new Notice(t().notice.selectTextFirst);
       return;
     }
 
@@ -320,7 +455,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        });
+        }, 'image', this.settings.useDriveUpload);
         progressModal.open();
       }
 
@@ -328,7 +463,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'analyzing',
         progress: 5,
-        message: '노트 내용 분석 중...'
+        message: t().progress.analyzing
       });
 
       const content = await this.getContent(editor, noteFile, options.inputSource, options.customInputText);
@@ -343,8 +478,8 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-prompt',
         progress: 15,
-        message: 'AI 프롬프트 생성 중...',
-        details: `Using ${this.settings.selectedProvider}`
+        message: t().progress.generatingPrompt,
+        details: `Using ${(this.settings.providers || []).find(p => p.id === this.settings.selectedProvider)?.name || this.settings.selectedProvider}`
       });
 
       let promptResult = await this.promptService.generatePrompt(
@@ -353,7 +488,8 @@ export default class StarCloudStudioPlugin extends Plugin {
         this.settings.promptModel,
         this.getApiKeyForProvider(),
         options.imageStyle,
-        options.imageStyle === 'infographic' ? options.infographicSubStyle : undefined
+        options.imageStyle === 'infographic' ? options.infographicSubStyle : undefined,
+        this.getProviderInfo(this.settings.selectedProvider)
       );
 
       // Add custom prefix if configured
@@ -366,7 +502,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         progressModal?.updateProgress({
           step: 'preview',
           progress: 30,
-          message: '프롬프트 확인 중...'
+          message: t().progress.previewingPrompt
         });
 
         const previewResult = await this.showPreviewModal(promptResult.prompt);
@@ -382,7 +518,7 @@ export default class StarCloudStudioPlugin extends Plugin {
           progressModal?.updateProgress({
             step: 'generating-prompt',
             progress: 15,
-            message: '프롬프트 재생성 중...'
+            message: t().progress.regeneratingPrompt
           });
 
           promptResult = await this.promptService.generatePrompt(
@@ -403,85 +539,128 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-image',
         progress: 40,
-        message: '이미지 생성 중...',
-        details: 'This may take a minute...'
+        message: t().progress.generatingImage
       });
 
       const cartoonCuts = options.cartoonCuts === 'custom'
         ? options.customCartoonCuts
         : parseInt(options.cartoonCuts);
 
+      // 이미지 프로바이더 정보 조회
+      const imageProviderId = this.settings.imageProvider || 'google';
+      const imageProvider = (this.settings.providers || []).find(p => p.id === imageProviderId);
+      const imageApiKey = imageProvider?.apiKey || this.getApiKeyForProvider(imageProviderId);
+      const imageBaseUrl = imageProvider?.baseUrl || 'https://generativelanguage.googleapis.com/v1beta/models';
+      const imageAuthType = imageProvider?.authType || 'query-param';
+      const imageApiFormat = imageProvider?.apiFormat || 'gemini';
+
+      // 선택된 이미지 모델의 요청 파라미터 조회
+      const imageModelDef = (this.settings.models || []).find(m => m.id === this.settings.imageModel);
+      const imageRequestParams = imageModelDef?.imageRequestParams;
+
       const imageResult = await this.executeWithRetry(
         () => this.imageService.generateImage(
           promptResult.prompt,
-          this.settings.googleApiKey,
+          imageApiKey,
           this.settings.imageModel,
           options.imageStyle,
           this.settings.preferredLanguage,
           options.imageSize,
           cartoonCuts,
           options.infographicSubStyle,
-          options.imageOrientation
+          options.imageOrientation,
+          imageBaseUrl,
+          imageAuthType,
+          imageApiFormat,
+          imageRequestParams
         ),
         this.settings.autoRetryCount
       );
 
-      // Step 5: Upload to Google Drive
-      progressModal?.updateProgress({
-        step: 'uploading',
-        progress: 70,
-        message: 'Google Drive에 업로드 중...'
-      });
-
-      if (!this.driveUploadService) {
-        throw new GenerationErrorClass('OAUTH_ERROR', 'Google Drive not connected');
-      }
-
       const fileName = this.generateFileName(noteFile.basename);
 
-      // Use Data subfolder for images
-      const driveImageFolder = `${this.settings.driveFolder || 'StarCloud'}/Data`;
-      const uploadResult = await this.driveUploadService.uploadImage(
-        imageResult.imageData,
-        imageResult.mimeType,
-        fileName,
-        driveImageFolder,
-        this.settings.organizeFoldersByDate,
-        (progress) => {
-          progressModal?.updateProgress({
-            step: 'uploading',
-            progress: 70 + (progress.progress * 0.2),
-            message: progress.message
-          });
+      if (this.settings.useDriveUpload && this.driveUploadService) {
+        // Step 5: Upload to Google Drive
+        progressModal?.updateProgress({
+          step: 'uploading',
+          progress: 70,
+          message: t().progress.uploading
+        });
+
+        const driveImageFolder = `${this.settings.driveFolder || 'StarCloud'}/Data`;
+        const uploadResult = await this.driveUploadService.uploadImage(
+          imageResult.imageData,
+          imageResult.mimeType,
+          fileName,
+          driveImageFolder,
+          this.settings.organizeFoldersByDate,
+          (progress) => {
+            progressModal?.updateProgress({
+              step: 'uploading',
+              progress: 70 + (progress.progress * 0.2),
+              message: progress.message
+            });
+          }
+        );
+
+        // Step 6: Embed in note
+        progressModal?.updateProgress({
+          step: 'embedding',
+          progress: 95,
+          message: t().progress.embedding
+        });
+
+        await this.embedService.embedDriveImageInNote(
+          editor,
+          noteFile,
+          uploadResult,
+          {
+            size: this.settings.embedSize,
+            showTitle: this.settings.showTitleInEmbed
+          },
+          embedPosition
+        );
+      } else {
+        // Step 5-6: Save locally and embed
+        progressModal?.updateProgress({
+          step: 'saving',
+          progress: 70,
+          message: t().progress.saving
+        });
+
+        const attachmentFolder = `${this.settings.driveFolder || 'StarCloud'}/Data`;
+        const savedPath = await this.fileService.saveImage(
+          imageResult.imageData,
+          imageResult.mimeType,
+          noteFile,
+          attachmentFolder
+        );
+
+        progressModal?.updateProgress({
+          step: 'embedding',
+          progress: 95,
+          message: t().progress.embedding
+        });
+
+        // Obsidian 마크다운 이미지 임베드
+        const embedCode = `![[${savedPath}]]`;
+        const cursor = editor.getCursor();
+        const lineContent = editor.getLine(cursor.line);
+        if (lineContent.trim()) {
+          editor.replaceRange('\n\n' + embedCode + '\n', { line: cursor.line, ch: lineContent.length });
+        } else {
+          editor.replaceRange(embedCode + '\n\n', cursor);
         }
-      );
-
-      // Step 6: Embed in note
-      progressModal?.updateProgress({
-        step: 'embedding',
-        progress: 95,
-        message: '노트에 삽입 중...'
-      });
-
-      await this.embedService.embedDriveImageInNote(
-        editor,
-        noteFile,
-        uploadResult,
-        {
-          size: this.settings.embedSize,
-          showTitle: this.settings.showTitleInEmbed
-        },
-        embedPosition
-      );
+      }
 
       // Complete!
       progressModal?.updateProgress({
         step: 'complete',
         progress: 100,
-        message: '포스터 생성 완료!'
+        message: t().progress.posterComplete
       });
 
-      new Notice('Knowledge Poster created successfully!');
+      new Notice(t().notice.posterCreated);
 
     } catch (error) {
       console.error('Generation error:', error);
@@ -526,6 +705,14 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   private getApiKeyForProvider(provider?: AIProvider): string {
     const targetProvider = provider || this.settings.selectedProvider;
+
+    // 동적 프로바이더에서 먼저 조회
+    const providerDef = (this.settings.providers || []).find(p => p.id === targetProvider);
+    if (providerDef?.apiKey) {
+      return providerDef.apiKey;
+    }
+
+    // 레거시 폴백
     const keyMap: Record<string, string> = {
       openai: this.settings.openaiApiKey,
       google: this.settings.googleApiKey,
@@ -537,22 +724,50 @@ export default class StarCloudStudioPlugin extends Plugin {
   }
 
   /**
+   * 동적 프로바이더 정보 조회 (서비스에 전달용)
+   */
+  private getProviderInfo(providerId: string): ProviderInfo | undefined {
+    const provider = (this.settings.providers || []).find(p => p.id === providerId);
+    if (!provider) return undefined;
+    return {
+      baseUrl: provider.baseUrl,
+      apiFormat: provider.apiFormat,
+      authType: provider.authType,
+    };
+  }
+
+  /**
+   * 프로바이더의 첫 번째 비-이미지 모델 ID 반환
+   */
+  private getDefaultModelForProvider(providerId: string): string {
+    const models = this.settings.models || [];
+    const providerModels = models.filter(m => m.providerId === providerId && !m.isImageModel);
+    if (providerModels.length > 0) {
+      return providerModels[0].id;
+    }
+    // 레거시 폴백
+    const config = PROVIDER_CONFIGS[providerId];
+    return config?.defaultModel || '';
+  }
+
+  /**
    * Check prerequisites before generation
    */
   private checkPrerequisites(): boolean {
     if (!this.settings.googleApiKey) {
-      new Notice('Please configure Google API key in settings');
+      new Notice(t().notice.configureGoogleApiKey);
       return false;
     }
 
-    if (!this.isGoogleDriveConnected()) {
-      new Notice('Please connect to Google Drive in settings');
+    // Drive 업로드 사용 시에만 연결 필수 체크
+    if (this.settings.useDriveUpload && !this.isGoogleDriveConnected()) {
+      new Notice(t().notice.connectDriveFirst);
       return false;
     }
 
     const apiKey = this.getApiKeyForProvider();
     if (!apiKey) {
-      new Notice(`Please configure ${this.settings.selectedProvider} API key in settings`);
+      new Notice(t().notice.configureApiKey(this.settings.selectedProvider));
       return false;
     }
 
@@ -640,13 +855,13 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   private async generateSlide(editor: Editor, view: MarkdownView) {
     if (this.isGenerating) {
-      new Notice('Generation already in progress');
+      new Notice(t().notice.generationInProgress);
       return;
     }
 
     const noteFile = view.file;
     if (!noteFile) {
-      new Notice('No active note');
+      new Notice(t().notice.noActiveNote);
       return;
     }
 
@@ -654,7 +869,8 @@ export default class StarCloudStudioPlugin extends Plugin {
     const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
     const apiKey = this.getApiKeyForProvider(slideProvider);
     if (!apiKey) {
-      new Notice(`Please configure ${slideProvider} API key in settings for slide generation`);
+      const slideProviderName = (this.settings.providers || []).find(p => p.id === slideProvider)?.name || slideProvider;
+      new Notice(`Please configure ${slideProviderName} API key in settings for slide generation`);
       return;
     }
 
@@ -685,9 +901,10 @@ export default class StarCloudStudioPlugin extends Plugin {
     const noteFile = view.file;
     if (!noteFile) return;
 
-    const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
-    const slideModel = this.settings.slideModel || PROVIDER_CONFIGS[slideProvider].defaultModel;
+    const slideProvider = this.settings.slideProvider || this.settings.defaultProviderId || this.settings.selectedProvider;
+    const slideModel = this.settings.slideModel || this.getDefaultModelForProvider(slideProvider);
     const apiKey = this.getApiKeyForProvider(slideProvider);
+    const providerInfo = this.getProviderInfo(slideProvider);
     this.isGenerating = true;
     let progressModal: ProgressModal | null = null;
 
@@ -695,7 +912,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        }, 'slide');
+        }, 'slide', false, options.uploadDestination === 'github');
         progressModal.open();
       }
 
@@ -703,7 +920,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'analyzing',
         progress: 5,
-        message: '콘텐츠 분석 중...'
+        message: t().progress.analyzing
       });
 
       let content: string;
@@ -725,7 +942,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         step: 'generating-slide',
         progress: 20,
         message: 'HTML 슬라이드 생성 중...',
-        details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
+        details: `${(this.settings.providers || []).find(p => p.id === slideProvider)?.name || slideProvider} (${slideModel})`
       });
 
       const systemPrompt = options.selectedPrompt;
@@ -734,14 +951,15 @@ export default class StarCloudStudioPlugin extends Plugin {
         slideProvider,
         slideModel,
         apiKey,
-        systemPrompt
+        systemPrompt,
+        providerInfo
       );
 
       // Save slide
       progressModal?.updateProgress({
         step: 'saving',
         progress: 60,
-        message: '슬라이드 저장 중...'
+        message: t().progress.saving
       });
 
       const slidePath = await this.fileService.saveSlide(
@@ -751,14 +969,14 @@ export default class StarCloudStudioPlugin extends Plugin {
         result.title
       );
 
-      // Git commit and push if enabled
+      // Git commit and push (uploadDestination이 'github'일 때만)
       let githubPagesUrl: string | undefined;
 
-      if (this.settings.gitEnabled && this.settings.autoCommitPush) {
+      if (options.uploadDestination === 'github' && this.settings.gitEnabled) {
         progressModal?.updateProgress({
           step: 'uploading',
           progress: 75,
-          message: 'GitHub에 커밋 & 푸시 중...'
+          message: t().progress.uploading
         });
 
         const absolutePath = this.fileService.getAbsolutePath(slidePath);
@@ -787,7 +1005,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'embedding',
         progress: 95,
-        message: '노트에 삽입 중...'
+        message: t().progress.embedding
       });
 
       await this.fileService.embedSlideInNote(noteFile, slidePath, githubPagesUrl, editor);
@@ -795,13 +1013,13 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'complete',
         progress: 100,
-        message: '슬라이드 생성 완료!'
+        message: t().progress.slideComplete
       });
 
       if (githubPagesUrl) {
         new Notice(`슬라이드가 생성되었습니다!\n${githubPagesUrl}`);
       } else {
-        new Notice('인터랙티브 슬라이드가 생성되었습니다!');
+        new Notice(t().notice.slideCreated);
       }
 
     } catch (error) {
@@ -825,15 +1043,18 @@ export default class StarCloudStudioPlugin extends Plugin {
     const noteFile = view.file;
     if (!noteFile) return;
 
-    // Check if Drive is connected for PPTX upload
-    if (!this.driveUploadService || !this.driveUploadService.isConnected()) {
-      new Notice('PPTX 업로드를 위해 Google Drive에 먼저 연결해주세요.');
+    const useDrive = options.uploadDestination === 'drive';
+
+    // Drive 업로드를 선택한 경우에만 연결 체크
+    if (useDrive && (!this.driveUploadService || !this.driveUploadService.isConnected())) {
+      new Notice(t().notice.connectDriveFirst);
       return;
     }
 
-    const slideProvider = this.settings.slideProvider || this.settings.selectedProvider;
-    const slideModel = this.settings.slideModel || PROVIDER_CONFIGS[slideProvider].defaultModel;
+    const slideProvider = this.settings.slideProvider || this.settings.defaultProviderId || this.settings.selectedProvider;
+    const slideModel = this.settings.slideModel || this.getDefaultModelForProvider(slideProvider);
     const apiKey = this.getApiKeyForProvider(slideProvider);
+    const providerInfo = this.getProviderInfo(slideProvider);
     this.isGenerating = true;
     let progressModal: ProgressModal | null = null;
 
@@ -841,7 +1062,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        }, 'pptx');
+        }, 'pptx', useDrive);
         progressModal.open();
       }
 
@@ -849,7 +1070,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'analyzing',
         progress: 5,
-        message: '콘텐츠 분석 중...'
+        message: t().progress.analyzing
       });
 
       let content: string;
@@ -869,8 +1090,8 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-slide',
         progress: 20,
-        message: 'PPTX 데이터 생성 중...',
-        details: `${slideProvider} (${slideModel}) 사용 중 (긴 콘텐츠는 수 분 소요될 수 있습니다)`
+        message: t().progress.generatingSlide,
+        details: `${(this.settings.providers || []).find(p => p.id === slideProvider)?.name || slideProvider} (${slideModel})`
       });
 
       const systemPrompt = options.selectedPrompt;
@@ -880,7 +1101,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'saving',
         progress: 50,
-        message: 'PPTX 파일 생성 중...'
+        message: t().progress.generatingSlide
       });
 
       let pptxResult;
@@ -892,7 +1113,8 @@ export default class StarCloudStudioPlugin extends Plugin {
           slideProvider,
           slideModel,
           apiKey,
-          systemPrompt
+          systemPrompt,
+          providerInfo
         );
         pptxResult = await this.pptxService.generateFlexiblePptx(flexibleData);
       } else {
@@ -902,53 +1124,80 @@ export default class StarCloudStudioPlugin extends Plugin {
           slideProvider,
           slideModel,
           apiKey,
-          systemPrompt
+          systemPrompt,
+          providerInfo
         );
         pptxResult = await this.pptxService.generatePptx(presentationData);
       }
 
-      // Upload to Google Drive
+      // 항상 로컬에 먼저 저장
       progressModal?.updateProgress({
-        step: 'uploading',
-        progress: 70,
-        message: 'Google Drive에 업로드 중...'
+        step: 'saving',
+        progress: 60,
+        message: t().progress.saving
       });
 
       const fileName = this.sanitizePptxFileName(pptxResult.title) + '.pptx';
-      const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      const slidePath = `${this.settings.slidesRootPath || 'StarCloud/Slide'}/${fileName}`;
 
-      // Use Slide subfolder for PPTX
-      const driveSlideFolder = `${this.settings.driveFolder || 'StarCloud'}/Slide`;
-      const uploadResult = await this.driveUploadService.uploadBuffer(
-        pptxResult.pptxBuffer,
-        mimeType,
-        fileName,
-        driveSlideFolder,
-        this.settings.organizeFoldersByDate,
-        (progress) => {
-          progressModal?.updateProgress({
-            step: 'uploading',
-            progress: 70 + (progress.progress * 0.2),
-            message: progress.message
-          });
+      const folderPath = slidePath.substring(0, slidePath.lastIndexOf('/'));
+      if (!this.app.vault.getAbstractFileByPath(folderPath)) {
+        await this.app.vault.createFolder(folderPath);
+      }
+      await this.app.vault.createBinary(slidePath, pptxResult.pptxBuffer);
+
+      // Drive 업로드 (선택 시)
+      let driveEmbedCode: string | undefined;
+      if (useDrive) {
+        progressModal?.updateProgress({
+          step: 'uploading',
+          progress: 75,
+          message: t().progress.uploading
+        });
+
+        try {
+          const mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+          const driveSlideFolder = `${this.settings.driveFolder || 'StarCloud'}/Slide`;
+          const uploadResult = await this.driveUploadService!.uploadBuffer(
+            pptxResult.pptxBuffer,
+            mimeType,
+            fileName,
+            driveSlideFolder,
+            this.settings.organizeFoldersByDate,
+            (progress) => {
+              progressModal?.updateProgress({
+                step: 'uploading',
+                progress: 75 + (progress.progress * 0.15),
+                message: progress.message
+              });
+            }
+          );
+          driveEmbedCode = this.generatePptxEmbed(uploadResult, pptxResult.title);
+        } catch (uploadError) {
+          console.error('Drive upload failed (local file saved):', uploadError);
+          const msg = uploadError instanceof Error ? uploadError.message : String(uploadError);
+          new Notice(`Drive 업로드 실패 (로컬 파일은 저장됨): ${msg}`);
         }
-      );
+      }
 
-      // Embed in note
+      // 노트에 삽입
       progressModal?.updateProgress({
         step: 'embedding',
         progress: 95,
-        message: '노트에 삽입 중...'
+        message: t().progress.embedding
       });
 
-      const embedCode = this.generatePptxEmbed(uploadResult, pptxResult.title);
       const cursor = editor.getCursor();
-      editor.replaceRange(embedCode + '\n\n', cursor);
+      if (driveEmbedCode) {
+        editor.replaceRange(driveEmbedCode + '\n\n', cursor);
+      } else {
+        editor.replaceRange(`![[${slidePath}]]\n\n`, cursor);
+      }
 
       progressModal?.updateProgress({
         step: 'complete',
         progress: 100,
-        message: 'PPTX 생성 완료!'
+        message: t().progress.slideComplete
       });
 
       new Notice(`PPTX 프레젠테이션이 생성되었습니다!\n${pptxResult.slideCount}장 슬라이드`);
@@ -1017,7 +1266,7 @@ export default class StarCloudStudioPlugin extends Plugin {
   private async uploadFileToDrive(editor: Editor, view: MarkdownView) {
     // Check if Drive is connected
     if (!this.driveUploadService || !this.driveUploadService.isConnected()) {
-      new Notice('Please connect to Google Drive first (Command: Connect to Google Drive)');
+      new Notice(t().notice.connectDriveFirst);
       return;
     }
 
@@ -1034,7 +1283,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         const cursor = editor.getCursor();
         editor.replaceRange(result.embedCode + '\n\n', cursor);
 
-        new Notice('File uploaded and embedded successfully!');
+        new Notice(t().notice.posterCreated);
       }
     );
     modal.open();
@@ -1045,13 +1294,13 @@ export default class StarCloudStudioPlugin extends Plugin {
    */
   private async generateSpeech(editor: Editor, view: MarkdownView) {
     if (this.isGenerating) {
-      new Notice('Generation already in progress');
+      new Notice(t().notice.generationInProgress);
       return;
     }
 
     const noteFile = view.file;
     if (!noteFile) {
-      new Notice('No active note');
+      new Notice(t().notice.noActiveNote);
       return;
     }
 
@@ -1078,7 +1327,8 @@ export default class StarCloudStudioPlugin extends Plugin {
     const scriptProvider = this.settings.speechScriptProvider || this.settings.selectedProvider;
     const scriptApiKey = this.getApiKeyForProvider(scriptProvider);
     if (!scriptApiKey) {
-      new Notice(`스크립트 생성을 위해 ${scriptProvider} API 키를 설정해주세요`);
+      const scriptProviderName = (this.settings.providers || []).find(p => p.id === scriptProvider)?.name || scriptProvider;
+      new Notice(`스크립트 생성을 위해 ${scriptProviderName} API 키를 설정해주세요`);
       return false;
     }
 
@@ -1086,12 +1336,12 @@ export default class StarCloudStudioPlugin extends Plugin {
     const ttsProvider = this.settings.ttsProvider;
     if (ttsProvider === 'gemini') {
       if (!this.settings.googleApiKey) {
-        new Notice('Gemini TTS를 위해 Google API 키를 설정해주세요');
+        new Notice(t().notice.configureGoogleApiKey);
         return false;
       }
     } else if (ttsProvider === 'elevenlabs') {
       if (!this.settings.elevenlabsApiKey) {
-        new Notice('ElevenLabs API 키를 설정해주세요');
+        new Notice(t().notice.configureApiKey('ElevenLabs'));
         return false;
       }
     }
@@ -1115,7 +1365,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       if (this.settings.showProgressModal) {
         progressModal = new ProgressModal(this.app, () => {
           this.isGenerating = false;
-        }, 'speech');
+        }, 'speech', !!options.uploadToDrive);
         progressModal.open();
       }
 
@@ -1123,7 +1373,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'analyzing',
         progress: 5,
-        message: '콘텐츠 분석 중...'
+        message: t().progress.analyzing
       });
 
       const content = await this.getSpeechContent(editor, noteFile, options);
@@ -1135,7 +1385,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-speech-script',
         progress: 15,
-        message: '스피치 스크립트 생성 중...',
+        message: t().progress.generatingScript,
         details: `${options.template} 템플릿으로 ${options.targetDuration}분 분량 생성`
       });
 
@@ -1150,7 +1400,8 @@ export default class StarCloudStudioPlugin extends Plugin {
         options.language,
         scriptProvider,
         scriptModel,
-        scriptApiKey
+        scriptApiKey,
+        this.getProviderInfo(scriptProvider)
       );
 
       // Step 3: Preview (optional)
@@ -1158,7 +1409,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         progressModal?.updateProgress({
           step: 'preview',
           progress: 35,
-          message: '스크립트 확인 중...'
+          message: t().progress.previewingPrompt
         });
 
         const previewResult = await this.showSpeechPreviewModal(
@@ -1179,7 +1430,7 @@ export default class StarCloudStudioPlugin extends Plugin {
           progressModal?.updateProgress({
             step: 'generating-speech-script',
             progress: 15,
-            message: '스크립트 재생성 중...'
+            message: t().progress.regeneratingPrompt
           });
 
           scriptResult = await this.speechPromptService.generateSpeechScript(
@@ -1201,7 +1452,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'generating-audio',
         progress: 45,
-        message: '음성 생성 중...',
+        message: t().progress.generatingAudio,
         details: `${TTS_PROVIDER_CONFIGS[options.ttsProvider].name} 사용 중`
       });
 
@@ -1238,14 +1489,14 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'processing-audio',
         progress: 65,
-        message: '오디오 처리 중...'
+        message: t().progress.processingAudio
       });
 
       // Step 6: Save audio locally
       progressModal?.updateProgress({
         step: 'saving',
         progress: 75,
-        message: '오디오 저장 중...'
+        message: t().progress.saving
       });
 
       const audioPath = await this.audioFileService.saveAudio(
@@ -1262,7 +1513,7 @@ export default class StarCloudStudioPlugin extends Plugin {
         progressModal?.updateProgress({
           step: 'uploading',
           progress: 85,
-          message: 'Google Drive에 업로드 중...'
+          message: t().progress.uploading
         });
 
         const fileName = this.generateAudioFileName(noteFile.basename, options.template);
@@ -1289,7 +1540,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'embedding',
         progress: 95,
-        message: '노트에 삽입 중...'
+        message: t().progress.embedding
       });
 
       if (driveResult) {
@@ -1314,7 +1565,7 @@ export default class StarCloudStudioPlugin extends Plugin {
       progressModal?.updateProgress({
         step: 'complete',
         progress: 100,
-        message: '음성 생성 완료!'
+        message: t().progress.speechComplete
       });
 
       const durationStr = this.audioFileService.formatDuration(audioResult.duration);

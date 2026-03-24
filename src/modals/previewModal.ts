@@ -101,33 +101,44 @@ export class PreviewModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
+      .modal:has(.starcloud-preview-modal) {
+        max-width: min(750px, 90vw);
+        width: min(750px, 90vw);
+      }
+
       .starcloud-preview-modal {
-        padding: 20px;
-        width: 600px;
-        max-width: 90vw;
+        padding: 16px;
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
       }
 
       .preview-description {
         color: var(--text-muted);
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
 
       .prompt-textarea-container {
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
 
       .prompt-textarea {
         width: 100%;
-        min-height: 250px;
-        padding: 12px;
+        min-height: 200px;
+        max-height: 50vh;
+        padding: 10px;
         font-family: var(--font-monospace);
-        font-size: 13px;
+        font-size: 11px;
         line-height: 1.5;
         border: 1px solid var(--background-modifier-border);
-        border-radius: 8px;
+        border-radius: 6px;
         background: var(--background-primary);
         color: var(--text-normal);
         resize: vertical;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
 
       .prompt-textarea:focus {
@@ -146,9 +157,10 @@ export class PreviewModal extends Modal {
       .modal-button-container {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 8px;
         padding-top: 16px;
         border-top: 1px solid var(--background-modifier-border);
+        flex-wrap: wrap;
       }
 
       .modal-button-container button {

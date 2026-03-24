@@ -1,51 +1,167 @@
 // ============================================================
-// AI Provider Types
+// AI Provider Types (Legacy - backward compatibility)
 // ============================================================
 
-export type AIProvider = 'openai' | 'google' | 'anthropic' | 'xai' | 'glm';
+export type AIProvider = string;
 
 export interface ProviderConfig {
   name: string;
   endpoint: string;
   defaultModel: string;
-  suggestedModels: string; // Comma-separated list of suggested models for display
+  suggestedModels: string;
 }
 
-export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
-  openai: {
-    name: 'OpenAI',
-    endpoint: 'https://api.openai.com/v1/chat/completions',
-    defaultModel: 'gpt-4o',
-    suggestedModels: 'gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo'
-  },
+export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   google: {
     name: 'Google Gemini',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
-    defaultModel: 'gemini-2.0-flash',
-    suggestedModels: 'gemini-2.0-flash, gemini-2.5-flash, gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash'
+    defaultModel: 'gemini-2.5-flash',
+    suggestedModels: 'gemini-2.5-pro, gemini-2.5-flash'
+  },
+  openai: {
+    name: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    defaultModel: 'gpt-5.4-mini',
+    suggestedModels: 'gpt-5.4, gpt-5.4-mini'
   },
   anthropic: {
     name: 'Anthropic',
     endpoint: 'https://api.anthropic.com/v1/messages',
-    defaultModel: 'claude-sonnet-4-20250514',
-    suggestedModels: 'claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-haiku-20240307'
+    defaultModel: 'claude-sonnet-4-6',
+    suggestedModels: 'claude-opus-4-6, claude-sonnet-4-6'
   },
   xai: {
     name: 'xAI',
     endpoint: 'https://api.x.ai/v1/chat/completions',
     defaultModel: 'grok-4-1-fast',
-    suggestedModels: 'grok-4-1-fast, grok-beta, grok-2-latest'
+    suggestedModels: 'grok-4-1-fast, grok-4-1-fast-reasoning'
   },
   glm: {
     name: 'GLM (z.ai)',
     endpoint: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
-    defaultModel: 'glm-4.6',
-    suggestedModels: 'glm-4.6, glm-4-flash, glm-4-plus, glm-4-air, glm-4'
+    defaultModel: 'glm-5',
+    suggestedModels: 'glm-5, glm-4-plus'
   }
 };
 
+// ============================================================
+// Dynamic AI Provider/Model Types
+// ============================================================
+
+export type AIApiFormat = 'openai' | 'anthropic' | 'gemini';
+
+export type AIAuthType = 'bearer' | 'x-api-key' | 'query-param';
+
+export interface AIProviderDefinition {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  authType: AIAuthType;
+  apiFormat: AIApiFormat;
+  isBuiltIn: boolean;
+  suggestedModels?: string;
+}
+
+export interface AIModelDefinition {
+  id: string;
+  name: string;
+  providerId: string;
+  enabled: boolean;
+  apiKey?: string;
+  isImageModel?: boolean;
+  imageRequestParams?: string; // JSON - OpenAI 호환 이미지 요청 추가 파라미터
+}
+
+export interface AISlotConfig {
+  providerId: string;
+  modelId: string;
+}
+
+export const BUILT_IN_PROVIDERS: AIProviderDefinition[] = [
+  {
+    id: 'google',
+    name: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+    apiKey: '',
+    authType: 'query-param',
+    apiFormat: 'gemini',
+    isBuiltIn: true,
+    suggestedModels: 'gemini-2.5-pro, gemini-2.5-flash'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1/chat/completions',
+    apiKey: '',
+    authType: 'bearer',
+    apiFormat: 'openai',
+    isBuiltIn: true,
+    suggestedModels: 'gpt-5.4, gpt-5.4-mini'
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com/v1/messages',
+    apiKey: '',
+    authType: 'x-api-key',
+    apiFormat: 'anthropic',
+    isBuiltIn: true,
+    suggestedModels: 'claude-opus-4-6, claude-sonnet-4-6'
+  },
+  {
+    id: 'xai',
+    name: 'xAI',
+    baseUrl: 'https://api.x.ai/v1/chat/completions',
+    apiKey: '',
+    authType: 'bearer',
+    apiFormat: 'openai',
+    isBuiltIn: true,
+    suggestedModels: 'grok-4-1-fast, grok-4-1-fast-reasoning'
+  },
+  {
+    id: 'glm',
+    name: 'GLM (z.ai)',
+    baseUrl: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
+    apiKey: '',
+    authType: 'bearer',
+    apiFormat: 'openai',
+    isBuiltIn: true,
+    suggestedModels: 'glm-5, glm-4-plus'
+  }
+];
+
+export const BUILT_IN_MODELS: AIModelDefinition[] = [
+  // Google Gemini
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', providerId: 'google', enabled: true },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', providerId: 'google', enabled: true },
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Image)', providerId: 'google', enabled: true, isImageModel: true },
+  // OpenAI
+  { id: 'gpt-5.4', name: 'GPT-5.4', providerId: 'openai', enabled: true },
+  { id: 'gpt-5.4-mini', name: 'GPT-5.4 Mini', providerId: 'openai', enabled: true },
+  // Anthropic
+  { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', providerId: 'anthropic', enabled: true },
+  { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', providerId: 'anthropic', enabled: true },
+  // xAI
+  { id: 'grok-4-1-fast', name: 'Grok 4.1 Fast', providerId: 'xai', enabled: true },
+  // GLM
+  { id: 'glm-5', name: 'GLM-5', providerId: 'glm', enabled: true },
+  { id: 'glm-4-plus', name: 'GLM-4 Plus', providerId: 'glm', enabled: true },
+];
+
 // Suggested image generation models for display
 export const SUGGESTED_IMAGE_MODELS = 'gemini-2.0-flash-exp, gemini-2.0-flash, imagen-3.0-generate-002';
+
+// OpenAI 호환 이미지 모델 기본 요청 파라미터 템플릿
+// {ratio} → 16:9 또는 9:16, {size} → 1K/2K/4K
+export const DEFAULT_IMAGE_REQUEST_PARAMS = JSON.stringify({
+  modalities: ['image', 'text'],
+  image_config: {
+    aspect_ratio: '{ratio}',
+    image_size: '{size}'
+  },
+  max_tokens: 8192
+}, null, 2);
 
 // ============================================================
 // Input Source Types
@@ -214,7 +330,20 @@ export interface EmbedOptions {
 // ============================================================
 
 export interface StarCloudStudioSettings {
-  // AI API Keys
+  // Settings Version (for migration)
+  settingsVersion: number;
+
+  // Language
+  language: 'auto' | 'ko' | 'en';
+
+  // Dynamic AI Provider/Model
+  providers: AIProviderDefinition[];
+  models: AIModelDefinition[];
+  defaultProviderId: string;
+  defaultModelId: string;
+  slots: Partial<Record<string, AISlotConfig>>;
+
+  // AI API Keys (legacy - migrated to providers)
   googleApiKey: string;
   openaiApiKey: string;
   anthropicApiKey: string;
@@ -236,6 +365,7 @@ export interface StarCloudStudioSettings {
   defaultInputSource: InputSource;
 
   // Image Generation
+  imageProvider: string;
   imageModel: string;
   imageStyle: ImageStyle;
   infographicSubStyle: InfographicSubStyle;
@@ -245,6 +375,7 @@ export interface StarCloudStudioSettings {
   customCartoonCuts: number;
 
   // Google Drive
+  useDriveUpload: boolean;
   driveFolder: string;
   organizeFoldersByDate: boolean;
 

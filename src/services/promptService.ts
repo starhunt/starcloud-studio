@@ -1,6 +1,8 @@
 import { requestUrl } from 'obsidian';
 import {
   AIProvider,
+  AIApiFormat,
+  AIAuthType,
   PromptGenerationResult,
   GenerationErrorClass,
   PROVIDER_CONFIGS,
@@ -9,6 +11,7 @@ import {
   INFOGRAPHIC_SUB_STYLES
 } from '../types';
 import { SYSTEM_PROMPT } from '../settingsData';
+import type { ProviderInfo } from './slideService';
 
 export class PromptService {
   /**
@@ -20,10 +23,12 @@ export class PromptService {
     model: string,
     apiKey: string,
     imageStyle?: ImageStyle,
-    infographicSubStyle?: InfographicSubStyle
+    infographicSubStyle?: InfographicSubStyle,
+    providerInfo?: ProviderInfo
   ): Promise<PromptGenerationResult> {
     if (!apiKey) {
-      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+      const providerName = PROVIDER_CONFIGS[provider]?.name || provider;
+      throw this.createError('INVALID_API_KEY', `${providerName} API key is not configured`);
     }
 
     if (!noteContent.trim()) {
@@ -38,7 +43,7 @@ export class PromptService {
     }
 
     try {
-      const prompt = await this.callProvider(provider, model, apiKey, noteContent, systemPrompt);
+      const prompt = await this.callProvider(provider, model, apiKey, noteContent, systemPrompt, providerInfo);
       return {
         prompt,
         model,
@@ -57,76 +62,72 @@ export class PromptService {
     model: string,
     apiKey: string,
     content: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<string> {
+    const userMessage = `Create an image prompt for the following content:\n\n${content}`;
+
+    if (providerInfo) {
+      return this.callByApiFormat(providerInfo, model, apiKey, userMessage, systemPrompt, provider);
+    }
+
+    // 레거시 폴백
     switch (provider) {
       case 'openai':
-        return this.callOpenAI(model, apiKey, content, systemPrompt);
-      case 'google':
-        return this.callGoogle(model, apiKey, content, systemPrompt);
-      case 'anthropic':
-        return this.callAnthropic(model, apiKey, content, systemPrompt);
       case 'xai':
-        return this.callXAI(model, apiKey, content, systemPrompt);
-      case 'glm':
-        return this.callGLM(model, apiKey, content, systemPrompt);
-      default: {
-        const unknownProvider: never = provider;
-        throw this.createError('UNKNOWN', `Unknown provider: ${String(unknownProvider)}`);
+      case 'glm': {
+        const urls: Record<string, string> = {
+          openai: 'https://api.openai.com/v1/chat/completions',
+          xai: 'https://api.x.ai/v1/chat/completions',
+          glm: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
+        };
+        return this.callOpenAICompatible(urls[provider], model, apiKey, userMessage, systemPrompt, provider);
       }
+      case 'google':
+        return this.callGemini('https://generativelanguage.googleapis.com/v1beta/models', model, apiKey, userMessage, systemPrompt);
+      case 'anthropic':
+        return this.callAnthropicApi('https://api.anthropic.com/v1/messages', model, apiKey, userMessage, systemPrompt);
+      default:
+        throw this.createError('UNKNOWN', `Unknown provider: ${provider}. Please update settings.`);
     }
   }
 
-  private async callOpenAI(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+  private async callByApiFormat(info: ProviderInfo, model: string, apiKey: string, content: string, systemPrompt: string, label: string): Promise<string> {
+    switch (info.apiFormat) {
+      case 'openai':
+        return this.callOpenAICompatible(info.baseUrl, model, apiKey, content, systemPrompt, label);
+      case 'gemini':
+        return this.callGemini(info.baseUrl, model, apiKey, content, systemPrompt);
+      case 'anthropic':
+        return this.callAnthropicApi(info.baseUrl, model, apiKey, content, systemPrompt);
+      default:
+        throw this.createError('UNKNOWN', `Unknown API format: ${info.apiFormat}`);
+    }
+  }
+
+  private async callOpenAICompatible(baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string, label: string): Promise<string> {
+    const url = baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`;
     const response = await requestUrl({
-      url: 'https://api.openai.com/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
+        model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content }],
+        max_tokens: 1000, temperature: 0.7
       })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'openai');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, label);
+    return response.json.choices[0]?.message?.content?.trim() || '';
   }
 
-  private async callGoogle(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
+  private async callGemini(baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+    const url = `${baseUrl}/${model}:generateContent?key=${apiKey}`;
     const response = await requestUrl({
-      url,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: [{
-          role: 'user',
-          parts: [{
-            text: `Create an image prompt for the following content:\n\n${content}`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000
-        },
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: content }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -135,102 +136,24 @@ export class PromptService {
         ]
       })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'google');
-    }
-
-    const data = response.json;
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-
-    if (!generatedText) {
-      console.error('Gemini API response:', JSON.stringify(data, null, 2));
-      throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response. Check console for details.');
-    }
-
-    return generatedText;
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, 'google');
+    const text = response.json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (!text) throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response.');
+    return text;
   }
 
-  private async callAnthropic(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+  private async callAnthropicApi(baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+    const url = baseUrl.includes('/messages') ? baseUrl : `${baseUrl}/messages`;
     const response = await requestUrl({
-      url: 'https://api.anthropic.com/v1/messages',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: model,
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [
-          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
-        ]
+        model, max_tokens: 1000, system: systemPrompt,
+        messages: [{ role: 'user', content }]
       })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'anthropic');
-    }
-
-    const data = response.json;
-    return data.content?.[0]?.text?.trim() || '';
-  }
-
-  private async callXAI(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.x.ai/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
-        ],
-        temperature: 0.7
-      })
-    });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'xai');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
-  }
-
-  /**
-   * GLM (智谱AI) API call
-   */
-  private async callGLM(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Create an image prompt for the following content:\n\n${content}` }
-        ],
-        temperature: 0.7
-      })
-    });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'glm');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, 'anthropic');
+    return response.json.content?.[0]?.text?.trim() || '';
   }
 
   private handleHttpError(status: number, responseText: string, provider: AIProvider): GenerationErrorClass {

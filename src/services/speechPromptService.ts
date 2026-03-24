@@ -9,6 +9,7 @@ import {
   DialogueSegment
 } from '../types';
 import { SPEECH_TEMPLATE_PROMPTS } from '../settingsData';
+import type { ProviderInfo } from './slideService';
 
 export class SpeechPromptService {
   /**
@@ -21,7 +22,8 @@ export class SpeechPromptService {
     language: PreferredLanguage,
     provider: AIProvider,
     model: string,
-    apiKey: string
+    apiKey: string,
+    providerInfo?: ProviderInfo
   ): Promise<SpeechGenerationResult> {
     if (!apiKey) {
       throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
@@ -42,7 +44,7 @@ export class SpeechPromptService {
     const fullPrompt = `${languageInstruction}\n\n${systemPrompt}`;
 
     try {
-      const script = await this.callProvider(provider, model, apiKey, fullPrompt);
+      const script = await this.callProvider(provider, model, apiKey, fullPrompt, providerInfo);
 
       // Parse dialogue segments if this is a dialogue template
       const dialogueSegments = template === 'notebooklm-dialogue'
@@ -167,70 +169,61 @@ export class SpeechPromptService {
     provider: AIProvider,
     model: string,
     apiKey: string,
-    prompt: string
+    prompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<string> {
+    if (providerInfo) {
+      return this.callByApiFormat(providerInfo, model, apiKey, prompt, provider);
+    }
+
     switch (provider) {
       case 'openai':
-        return this.callOpenAI(model, apiKey, prompt);
-      case 'google':
-        return this.callGoogle(model, apiKey, prompt);
-      case 'anthropic':
-        return this.callAnthropic(model, apiKey, prompt);
       case 'xai':
-        return this.callXAI(model, apiKey, prompt);
-      case 'glm':
-        return this.callGLM(model, apiKey, prompt);
-      default: {
-        const unknownProvider: never = provider;
-        throw this.createError('UNKNOWN', `Unknown provider: ${String(unknownProvider)}`);
+      case 'glm': {
+        const urls: Record<string, string> = {
+          openai: 'https://api.openai.com/v1/chat/completions',
+          xai: 'https://api.x.ai/v1/chat/completions',
+          glm: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
+        };
+        return this.callOpenAICompatible(urls[provider], model, apiKey, prompt, provider);
       }
+      case 'google':
+        return this.callGemini('https://generativelanguage.googleapis.com/v1beta/models', model, apiKey, prompt);
+      case 'anthropic':
+        return this.callAnthropicApi('https://api.anthropic.com/v1/messages', model, apiKey, prompt);
+      default:
+        throw this.createError('UNKNOWN', `Unknown provider: ${provider}. Please update settings.`);
     }
   }
 
-  private async callOpenAI(model: string, apiKey: string, prompt: string): Promise<string> {
+  private async callByApiFormat(info: ProviderInfo, model: string, apiKey: string, content: string, label: string): Promise<string> {
+    switch (info.apiFormat) {
+      case 'openai': return this.callOpenAICompatible(info.baseUrl, model, apiKey, content, label);
+      case 'gemini': return this.callGemini(info.baseUrl, model, apiKey, content);
+      case 'anthropic': return this.callAnthropicApi(info.baseUrl, model, apiKey, content);
+      default: throw this.createError('UNKNOWN', `Unknown API format: ${info.apiFormat}`);
+    }
+  }
+
+  private async callOpenAICompatible(baseUrl: string, model: string, apiKey: string, content: string, label: string): Promise<string> {
+    const url = baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`;
     const response = await requestUrl({
-      url: 'https://api.openai.com/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 8000,
-        temperature: 0.8
-      })
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content }], max_tokens: 8000, temperature: 0.8 })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'openai');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, label);
+    return response.json.choices[0]?.message?.content?.trim() || '';
   }
 
-  private async callGoogle(model: string, apiKey: string, prompt: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
+  private async callGemini(baseUrl: string, model: string, apiKey: string, content: string): Promise<string> {
+    const url = `${baseUrl}/${model}:generateContent?key=${apiKey}`;
     const response = await requestUrl({
-      url,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 8000
-        },
+        contents: [{ role: 'user', parts: [{ text: content }] }],
+        generationConfig: { temperature: 0.8, maxOutputTokens: 8000 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -239,96 +232,21 @@ export class SpeechPromptService {
         ]
       })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'google');
-    }
-
-    const data = response.json;
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-
-    if (!generatedText) {
-      console.error('Gemini API response:', JSON.stringify(data, null, 2));
-      throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response.');
-    }
-
-    return generatedText;
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, 'google');
+    const text = response.json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (!text) throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response.');
+    return text;
   }
 
-  private async callAnthropic(model: string, apiKey: string, prompt: string): Promise<string> {
+  private async callAnthropicApi(baseUrl: string, model: string, apiKey: string, content: string): Promise<string> {
+    const url = baseUrl.includes('/messages') ? baseUrl : `${baseUrl}/messages`;
     const response = await requestUrl({
-      url: 'https://api.anthropic.com/v1/messages',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: model,
-        max_tokens: 8000,
-        messages: [
-          { role: 'user', content: prompt }
-        ]
-      })
+      url, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 8000, messages: [{ role: 'user', content }] })
     });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'anthropic');
-    }
-
-    const data = response.json;
-    return data.content?.[0]?.text?.trim() || '';
-  }
-
-  private async callXAI(model: string, apiKey: string, prompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.x.ai/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.8
-      })
-    });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'xai');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
-  }
-
-  private async callGLM(model: string, apiKey: string, prompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.8
-      })
-    });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'glm');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
+    if (response.status !== 200) throw this.handleHttpError(response.status, response.text, 'anthropic');
+    return response.json.content?.[0]?.text?.trim() || '';
   }
 
   private handleHttpError(status: number, responseText: string, provider: AIProvider): GenerationErrorClass {

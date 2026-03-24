@@ -527,10 +527,15 @@ export class SpeechOptionsModal extends Modal {
   private addStyles() {
     const style = document.createElement('style');
     style.textContent = `
+      .modal:has(.starcloud-speech-options) {
+        max-width: min(800px, 92vw);
+        width: min(800px, 92vw);
+      }
+
       .starcloud-speech-options {
-        width: 620px;
-        max-width: 95vw;
+        width: 100%;
         padding: 16px 20px;
+        box-sizing: border-box;
       }
 
       .starcloud-speech-options .modal-title {

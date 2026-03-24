@@ -12,58 +12,92 @@ export class ProgressModal extends Modal {
   private currentStepIndex: number = 0;
   private onCancel?: () => void;
   private mode: ProgressMode;
+  private useDriveUpload: boolean;
+  private useGitUpload: boolean;
 
-  private readonly imageSteps: { step: ProgressStep; label: string; icon: string }[] = [
-    { step: 'analyzing', label: '노트 분석 중...', icon: '📋' },
-    { step: 'generating-prompt', label: '프롬프트 생성 중...', icon: '✍️' },
-    { step: 'preview', label: '프롬프트 확인', icon: '👁️' },
-    { step: 'generating-image', label: '이미지 생성 중...', icon: '🎨' },
-    { step: 'uploading', label: 'Google Drive 업로드 중...', icon: '☁️' },
-    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
-    { step: 'complete', label: '완료!', icon: '✅' }
-  ];
+  private buildSteps(): { step: ProgressStep; label: string; icon: string }[] {
+    const useDrive = this.useDriveUpload;
 
-  private readonly slideSteps: { step: ProgressStep; label: string; icon: string }[] = [
-    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
-    { step: 'generating-slide', label: 'HTML 슬라이드 생성 중...', icon: '🎴' },
-    { step: 'saving', label: '슬라이드 저장 중...', icon: '💾' },
-    { step: 'uploading', label: 'GitHub에 업로드 중...', icon: '☁️' },
-    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
-    { step: 'complete', label: '완료!', icon: '✅' }
-  ];
+    if (this.mode === 'image') {
+      const steps = [
+        { step: 'analyzing' as ProgressStep, label: '노트 분석 중...', icon: '📋' },
+        { step: 'generating-prompt' as ProgressStep, label: '프롬프트 생성 중...', icon: '✍️' },
+        { step: 'preview' as ProgressStep, label: '프롬프트 확인', icon: '👁️' },
+        { step: 'generating-image' as ProgressStep, label: '이미지 생성 중...', icon: '🎨' },
+      ];
+      if (useDrive) {
+        steps.push({ step: 'uploading' as ProgressStep, label: 'Google Drive 업로드 중...', icon: '☁️' });
+      } else {
+        steps.push({ step: 'saving' as ProgressStep, label: '파일 저장 중...', icon: '💾' });
+      }
+      steps.push(
+        { step: 'embedding' as ProgressStep, label: '노트에 삽입 중...', icon: '📝' },
+        { step: 'complete' as ProgressStep, label: '완료!', icon: '✅' }
+      );
+      return steps;
+    }
 
-  private readonly pptxSteps: { step: ProgressStep; label: string; icon: string }[] = [
-    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
-    { step: 'generating-slide', label: 'PPTX 데이터 생성 중...', icon: '🎴' },
-    { step: 'saving', label: 'PPTX 파일 생성 중...', icon: '💾' },
-    { step: 'uploading', label: 'Google Drive에 업로드 중...', icon: '☁️' },
-    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
-    { step: 'complete', label: '완료!', icon: '✅' }
-  ];
+    if (this.mode === 'slide') {
+      const steps = [
+        { step: 'analyzing' as ProgressStep, label: '콘텐츠 분석 중...', icon: '📋' },
+        { step: 'generating-slide' as ProgressStep, label: 'HTML 슬라이드 생성 중...', icon: '🎴' },
+        { step: 'saving' as ProgressStep, label: '슬라이드 저장 중...', icon: '💾' },
+      ];
+      if (this.useGitUpload) {
+        steps.push({ step: 'uploading' as ProgressStep, label: 'GitHub에 업로드 중...', icon: '🐙' });
+      }
+      steps.push(
+        { step: 'embedding' as ProgressStep, label: '노트에 삽입 중...', icon: '📝' },
+        { step: 'complete' as ProgressStep, label: '완료!', icon: '✅' }
+      );
+      return steps;
+    }
 
-  private readonly speechSteps: { step: ProgressStep; label: string; icon: string }[] = [
-    { step: 'analyzing', label: '콘텐츠 분석 중...', icon: '📋' },
-    { step: 'generating-speech-script', label: '스피치 스크립트 생성 중...', icon: '✍️' },
-    { step: 'preview', label: '스크립트 확인', icon: '👁️' },
-    { step: 'generating-audio', label: '음성 생성 중...', icon: '🎤' },
-    { step: 'processing-audio', label: '오디오 처리 중...', icon: '🔊' },
-    { step: 'saving', label: '오디오 저장 중...', icon: '💾' },
-    { step: 'uploading', label: 'Google Drive에 업로드 중...', icon: '☁️' },
-    { step: 'embedding', label: '노트에 삽입 중...', icon: '📝' },
-    { step: 'complete', label: '완료!', icon: '✅' }
-  ];
+    if (this.mode === 'pptx') {
+      const steps = [
+        { step: 'analyzing' as ProgressStep, label: '콘텐츠 분석 중...', icon: '📋' },
+        { step: 'generating-slide' as ProgressStep, label: 'PPTX 데이터 생성 중...', icon: '🎴' },
+        { step: 'saving' as ProgressStep, label: 'PPTX 파일 생성 중...', icon: '💾' },
+      ];
+      if (useDrive) {
+        steps.push({ step: 'uploading' as ProgressStep, label: 'Google Drive에 업로드 중...', icon: '☁️' });
+      }
+      steps.push(
+        { step: 'embedding' as ProgressStep, label: '노트에 삽입 중...', icon: '📝' },
+        { step: 'complete' as ProgressStep, label: '완료!', icon: '✅' }
+      );
+      return steps;
+    }
 
-  private get steps() {
-    if (this.mode === 'speech') return this.speechSteps;
-    if (this.mode === 'pptx') return this.pptxSteps;
-    if (this.mode === 'slide') return this.slideSteps;
-    return this.imageSteps;
+    // speech
+    const steps = [
+      { step: 'analyzing' as ProgressStep, label: '콘텐츠 분석 중...', icon: '📋' },
+      { step: 'generating-speech-script' as ProgressStep, label: '스피치 스크립트 생성 중...', icon: '✍️' },
+      { step: 'preview' as ProgressStep, label: '스크립트 확인', icon: '👁️' },
+      { step: 'generating-audio' as ProgressStep, label: '음성 생성 중...', icon: '🎤' },
+      { step: 'processing-audio' as ProgressStep, label: '오디오 처리 중...', icon: '🔊' },
+      { step: 'saving' as ProgressStep, label: '오디오 저장 중...', icon: '💾' },
+    ];
+    if (useDrive) {
+      steps.push({ step: 'uploading' as ProgressStep, label: 'Google Drive에 업로드 중...', icon: '☁️' });
+    }
+    steps.push(
+      { step: 'embedding' as ProgressStep, label: '노트에 삽입 중...', icon: '📝' },
+      { step: 'complete' as ProgressStep, label: '완료!', icon: '✅' }
+    );
+    return steps;
   }
 
-  constructor(app: App, onCancel?: () => void, mode: ProgressMode = 'image') {
+  private get steps() {
+    return this.buildSteps();
+  }
+
+  constructor(app: App, onCancel?: () => void, mode: ProgressMode = 'image', useDriveUpload: boolean = false, useGitUpload: boolean = false) {
     super(app);
     this.onCancel = onCancel;
     this.mode = mode;
+    this.useDriveUpload = useDriveUpload;
+    this.useGitUpload = useGitUpload;
     this.state = {
       step: 'analyzing',
       progress: 0,

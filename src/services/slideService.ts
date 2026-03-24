@@ -1,6 +1,8 @@
 import { requestUrl } from 'obsidian';
 import {
   AIProvider,
+  AIApiFormat,
+  AIAuthType,
   SlideGenerationResult,
   GenerationError,
   GenerationErrorClass,
@@ -8,6 +10,13 @@ import {
   PptxPresentationData,
   PptxFlexiblePresentationData
 } from '../types';
+
+/** 동적 프로바이더 정보 (main.ts에서 전달) */
+export interface ProviderInfo {
+  baseUrl: string;
+  apiFormat: AIApiFormat;
+  authType: AIAuthType;
+}
 
 export class SlideService {
   private maxOutputTokens: number = 65536;
@@ -27,10 +36,12 @@ export class SlideService {
     provider: AIProvider,
     model: string,
     apiKey: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<SlideGenerationResult> {
     if (!apiKey) {
-      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+      const providerName = PROVIDER_CONFIGS[provider]?.name || provider;
+      throw this.createError('INVALID_API_KEY', `${providerName} API key is not configured`);
     }
 
     if (!content.trim()) {
@@ -38,7 +49,7 @@ export class SlideService {
     }
 
     try {
-      const response = await this.callProvider(provider, model, apiKey, content, systemPrompt);
+      const response = await this.callProvider(provider, model, apiKey, content, systemPrompt, providerInfo);
 
       // Extract HTML from response (handles markdown code blocks)
       const htmlContent = this.extractHtmlFromResponse(response);
@@ -68,10 +79,12 @@ export class SlideService {
     provider: AIProvider,
     model: string,
     apiKey: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<PptxPresentationData> {
     if (!apiKey) {
-      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+      const providerName = PROVIDER_CONFIGS[provider]?.name || provider;
+      throw this.createError('INVALID_API_KEY', `${providerName} API key is not configured`);
     }
 
     if (!content.trim()) {
@@ -79,7 +92,7 @@ export class SlideService {
     }
 
     try {
-      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt);
+      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt, providerInfo);
 
       // Extract JSON from response
       const presentationData = this.extractJsonFromResponse(response);
@@ -101,10 +114,12 @@ export class SlideService {
     provider: AIProvider,
     model: string,
     apiKey: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<PptxFlexiblePresentationData> {
     if (!apiKey) {
-      throw this.createError('INVALID_API_KEY', `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
+      const providerName = PROVIDER_CONFIGS[provider]?.name || provider;
+      throw this.createError('INVALID_API_KEY', `${providerName} API key is not configured`);
     }
 
     if (!content.trim()) {
@@ -112,7 +127,7 @@ export class SlideService {
     }
 
     try {
-      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt);
+      const response = await this.callProviderForPptx(provider, model, apiKey, content, systemPrompt, providerInfo);
 
       // Extract and parse flexible JSON from response
       const presentationData = this.extractFlexibleJsonFromResponse(response);
@@ -145,6 +160,10 @@ export class SlideService {
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       jsonString = jsonString.substring(firstBrace, lastBrace + 1);
     }
+
+    // JSON 문자열 리터럴 내부의 제어 문자를 이스케이프 처리
+    // "..." 안의 raw 줄바꿈/탭/제어문자를 \\n, \\t 등으로 변환
+    jsonString = this.sanitizeJsonControlChars(jsonString);
 
     try {
       const data = JSON.parse(jsonString) as PptxFlexiblePresentationData;
@@ -183,10 +202,11 @@ export class SlideService {
     model: string,
     apiKey: string,
     content: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<string> {
     const userMessage = `다음 콘텐츠를 분석하여 PowerPoint 프레젠테이션용 JSON 데이터를 생성해주세요:\n\n${content}`;
-    return this.callProvider(provider, model, apiKey, userMessage, systemPrompt);
+    return this.callProvider(provider, model, apiKey, userMessage, systemPrompt, providerInfo);
   }
 
   /**
@@ -208,6 +228,12 @@ export class SlideService {
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       jsonString = jsonString.substring(firstBrace, lastBrace + 1);
     }
+
+    // eslint-disable-next-line no-control-regex
+    jsonString = jsonString.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+      if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+      return '';
+    });
 
     try {
       const data = JSON.parse(jsonString) as PptxPresentationData;
@@ -240,39 +266,75 @@ export class SlideService {
     model: string,
     apiKey: string,
     content: string,
-    systemPrompt: string
+    systemPrompt: string,
+    providerInfo?: ProviderInfo
   ): Promise<string> {
+    // 동적 프로바이더 정보가 있으면 apiFormat 기반으로 라우팅
+    if (providerInfo) {
+      return this.callByApiFormat(providerInfo, model, apiKey, content, systemPrompt, provider);
+    }
+
+    // 레거시 폴백: 빌트인 프로바이더 ID 기반
     switch (provider) {
       case 'openai':
-        return this.callOpenAI(model, apiKey, content, systemPrompt);
-      case 'google':
-        return this.callGoogle(model, apiKey, content, systemPrompt);
-      case 'anthropic':
-        return this.callAnthropic(model, apiKey, content, systemPrompt);
       case 'xai':
-        return this.callXAI(model, apiKey, content, systemPrompt);
-      case 'glm':
-        return this.callGLM(model, apiKey, content, systemPrompt);
-      default: {
-        const unknownProvider: never = provider;
-        throw this.createError('UNKNOWN', `Unknown provider: ${String(unknownProvider)}`);
+      case 'glm': {
+        const urls: Record<string, string> = {
+          openai: 'https://api.openai.com/v1/chat/completions',
+          xai: 'https://api.x.ai/v1/chat/completions',
+          glm: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
+        };
+        return this.callOpenAICompatible(urls[provider], model, apiKey, content, systemPrompt, provider);
       }
+      case 'google':
+        return this.callGemini('https://generativelanguage.googleapis.com/v1beta/models', model, apiKey, content, systemPrompt);
+      case 'anthropic':
+        return this.callAnthropicApi('https://api.anthropic.com/v1/messages', model, apiKey, content, systemPrompt);
+      default:
+        throw this.createError('UNKNOWN', `Unknown provider: ${provider}. Please update slide settings.`);
     }
   }
 
-  private async callOpenAI(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+  /**
+   * apiFormat 기반 API 호출 라우팅
+   */
+  private async callByApiFormat(
+    info: ProviderInfo,
+    model: string,
+    apiKey: string,
+    content: string,
+    systemPrompt: string,
+    providerLabel: string
+  ): Promise<string> {
+    switch (info.apiFormat) {
+      case 'openai':
+        return this.callOpenAICompatible(info.baseUrl, model, apiKey, content, systemPrompt, providerLabel);
+      case 'gemini':
+        return this.callGemini(info.baseUrl, model, apiKey, content, systemPrompt);
+      case 'anthropic':
+        return this.callAnthropicApi(info.baseUrl, model, apiKey, content, systemPrompt);
+      default:
+        throw this.createError('UNKNOWN', `Unknown API format: ${info.apiFormat}`);
+    }
+  }
+
+  private async callOpenAICompatible(
+    baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string, providerLabel: string
+  ): Promise<string> {
+    // baseUrl이 /chat/completions를 포함하지 않으면 추가
+    const url = baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`;
     const response = await requestUrl({
-      url: 'https://api.openai.com/v1/chat/completions',
+      url,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: model,
+        model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
+          { role: 'user', content }
         ],
         max_tokens: this.maxOutputTokens,
         temperature: 0.7
@@ -280,36 +342,25 @@ export class SlideService {
     });
 
     if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'openai');
+      throw this.handleHttpError(response.status, response.text, providerLabel);
     }
 
     const data = response.json;
     return data.choices[0]?.message?.content?.trim() || '';
   }
 
-  private async callGoogle(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
+  private async callGemini(
+    baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string
+  ): Promise<string> {
+    const url = `${baseUrl}/${model}:generateContent?key=${apiKey}`;
     const response = await requestUrl({
       url,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: [{
-          role: 'user',
-          parts: [{
-            text: `Please create an interactive HTML slide based on the following content:\n\n${content}`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: this.maxOutputTokens
-        },
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: content }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: this.maxOutputTokens },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -328,19 +379,19 @@ export class SlideService {
 
     if (!generatedText) {
       console.error('Gemini API response:', JSON.stringify(data, null, 2));
-      const safetyRatings = data.candidates?.[0]?.safetyRatings;
-      if (safetyRatings) {
-        console.error('Safety Ratings:', JSON.stringify(safetyRatings, null, 2));
-      }
       throw this.createError('GENERATION_FAILED', 'Gemini API returned empty response. Check console for details.');
     }
 
     return generatedText;
   }
 
-  private async callAnthropic(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
+  private async callAnthropicApi(
+    baseUrl: string, model: string, apiKey: string, content: string, systemPrompt: string
+  ): Promise<string> {
+    // baseUrl이 /messages를 포함하지 않으면 추가
+    const url = baseUrl.includes('/messages') ? baseUrl : `${baseUrl}/messages`;
     const response = await requestUrl({
-      url: 'https://api.anthropic.com/v1/messages',
+      url,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -348,12 +399,10 @@ export class SlideService {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: model,
+        model,
         max_tokens: this.maxOutputTokens,
         system: systemPrompt,
-        messages: [
-          { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
-        ]
+        messages: [{ role: 'user', content }]
       })
     });
 
@@ -365,58 +414,57 @@ export class SlideService {
     return data.content?.[0]?.text?.trim() || '';
   }
 
-  private async callXAI(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.x.ai/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
-        ],
-        max_tokens: this.maxOutputTokens,
-        temperature: 0.7
-      })
-    });
+  /**
+   * JSON 문자열 리터럴 내부의 제어 문자를 이스케이프 처리
+   * "..." 안의 raw \n, \r, \t 등을 \\n, \\r, \\t로 변환
+   */
+  private sanitizeJsonControlChars(json: string): string {
+    // JSON 문자열 리터럴("..." 내부)에서 이스케이프 안 된 제어 문자를 처리
+    // 상태 머신: 따옴표 안/밖 추적
+    let result = '';
+    let inString = false;
+    let escaped = false;
 
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'xai');
+    for (let i = 0; i < json.length; i++) {
+      const ch = json[i];
+
+      if (escaped) {
+        result += ch;
+        escaped = false;
+        continue;
+      }
+
+      if (ch === '\\' && inString) {
+        result += ch;
+        escaped = true;
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = !inString;
+        result += ch;
+        continue;
+      }
+
+      if (inString) {
+        const code = ch.charCodeAt(0);
+        if (code < 0x20) {
+          // 제어 문자를 이스케이프 시퀀스로 변환
+          switch (ch) {
+            case '\n': result += '\\n'; break;
+            case '\r': result += '\\r'; break;
+            case '\t': result += '\\t'; break;
+            default: result += `\\u${code.toString(16).padStart(4, '0')}`; break;
+          }
+        } else {
+          result += ch;
+        }
+      } else {
+        result += ch;
+      }
     }
 
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
-  }
-
-  private async callGLM(model: string, apiKey: string, content: string, systemPrompt: string): Promise<string> {
-    const response = await requestUrl({
-      url: 'https://api.z.ai/api/coding/paas/v4/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please create an interactive HTML slide based on the following content:\n\n${content}` }
-        ],
-        max_tokens: this.maxOutputTokens,
-        temperature: 0.7
-      })
-    });
-
-    if (response.status !== 200) {
-      throw this.handleHttpError(response.status, response.text, 'glm');
-    }
-
-    const data = response.json;
-    return data.choices[0]?.message?.content?.trim() || '';
+    return result;
   }
 
   /**

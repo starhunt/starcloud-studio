@@ -1,7 +1,20 @@
-import { StarCloudStudioSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, HtmlSlideStyle, PptxSlideStyle, SlideUploadDestination, SpeechTemplate } from './types';
+import { StarCloudStudioSettings, SlidePromptType, SlidePromptConfig, SlideOutputFormat, HtmlSlideStyle, PptxSlideStyle, SlideUploadDestination, SpeechTemplate, BUILT_IN_PROVIDERS, BUILT_IN_MODELS } from './types';
 
 export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
-  // AI API Keys
+  // Settings Version
+  settingsVersion: 2,
+
+  // Language
+  language: 'auto',
+
+  // Dynamic AI Provider/Model
+  providers: [...BUILT_IN_PROVIDERS],
+  models: [...BUILT_IN_MODELS],
+  defaultProviderId: 'google',
+  defaultModelId: 'gemini-2.0-flash',
+  slots: {},
+
+  // AI API Keys (legacy)
   googleApiKey: '',
   openaiApiKey: '',
   anthropicApiKey: '',
@@ -23,6 +36,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   defaultInputSource: 'fullNote',
 
   // Image Generation
+  imageProvider: 'google',
   imageModel: 'gemini-3-pro-image-preview',
   imageStyle: 'infographic',
   infographicSubStyle: 'general',
@@ -32,6 +46,7 @@ export const DEFAULT_SETTINGS: StarCloudStudioSettings = {
   customCartoonCuts: 4,
 
   // Google Drive
+  useDriveUpload: true,
   driveFolder: 'StarCloud',
   organizeFoldersByDate: true,
 
@@ -126,24 +141,51 @@ export const BUILTIN_HTML_PROMPTS: Record<Exclude<HtmlSlideStyle, 'custom'>, Sli
     name: '세로 스크롤',
     description: '스크롤로 탐색하는 인터랙티브 인포그래픽',
     outputFormat: 'html',
-    prompt: `당신은 복잡한 기술 문서를 시각적으로 매력적이고 이해하기 쉬운 스크롤형 인터랙티브 인포그래픽 슬라이드로 변환하는 전문가입니다.
+    prompt: `당신은 세계적 수준의 인포그래픽 디자이너이자 프론트엔드 엔지니어입니다.
+주어진 콘텐츠를 분석하여 스크롤형 인터랙티브 인포그래픽 HTML 페이지를 생성하세요.
 
-주어진 콘텐츠를 분석하여 최소 15페이지 이상의 고품질 스크롤형 인터랙티브 인포그래픽 슬라이드를 생성하세요.
+## 출력 규칙 (필수)
+- 반드시 <!DOCTYPE html>로 시작하는 완전한 단일 HTML 파일
+- 외부 CDN 사용 금지 (Chart.js 제외: https://cdn.jsdelivr.net/npm/chart.js). 모든 CSS와 JS는 인라인
+- HTML/CSS/JS 코드만 출력. 설명이나 마크다운 금지
 
-구조:
-1. 타이틀 섹션 (1페이지)
-2. 개요 섹션 (1페이지)
-3. 핵심 개념 소개 (2-3페이지)
-4. 주요 내용 전개 (4-5페이지)
-5. 심층분석 파트 (4-8페이지)
-6. 종합 정리 및 시사점 (1페이지)
+## 콘텐츠 구조 (최소 15섹션)
+1. **히어로 섹션** — 제목 + 핵심 한 줄 요약 + 그라데이션 배경. 시선을 끄는 대형 타이포그래피
+2. **목차/개요** — 아이콘 + 짧은 설명의 카드 그리드. 클릭하면 해당 섹션으로 스크롤
+3. **핵심 개념** (2-3섹션) — 개념별 전용 섹션. 아이콘, 다이어그램, 비유 활용
+4. **주요 내용 전개** (4-6섹션) — 카드, 타임라인, 비교표, 프로세스 다이어그램 등 다양한 레이아웃 혼합
+5. **데이터 시각화** (1-2섹션) — Chart.js 차트 (bar/line/doughnut/radar 중 콘텐츠에 적합한 것). 수치가 없으면 비교/관계를 시각화
+6. **심층 분석** (2-4섹션) — 탭, 아코디언, 토글 등 인터랙티브 컴포넌트로 깊은 정보 제공
+7. **요약/결론** — 핵심 포인트 번호 매김. CTA 또는 주요 시사점
 
-기술적 요구사항:
-- 단일 HTML 파일로 출력
-- Chart.js 사용 가능
-- Intersection Observer를 활용한 스크롤 애니메이션
-- 다크/라이트 모드 지원
-- 반응형 디자인`,
+## 비주얼 디자인 (고품질 필수)
+- **색상**: 기본 다크모드. CSS 변수로 라이트/다크 모두 지원. 메인 컬러 1개 + 보조 2개의 조화로운 팔레트
+- **타이포그래피**: system-ui 폰트 스택. 제목은 굵고 크게(2rem+), 본문은 읽기 편한 크기(1rem, line-height: 1.7)
+- **간격**: 섹션 간 충분한 여백(padding: 80px 0+). 요소 간 일관된 간격
+- **카드/컨테이너**: border-radius: 12-16px, 미묘한 그림자, backdrop-filter 글래스모피즘 활용
+- **아이콘**: SVG 인라인 아이콘 또는 이모지를 적극 활용하여 시각적 풍부함 제공
+- **그라데이션**: 섹션 배경에 미묘한 그라데이션으로 깊이감
+- **구분선**: 섹션 간 시각적 구분 (색상 변화, 웨이브 SVG 디바이더 등)
+
+## 인터랙션 & 애니메이션
+- Intersection Observer로 각 섹션/요소가 뷰포트 진입 시 fade-in + slide-up 애니메이션
+- 숫자 카운트업 애니메이션 (수치 데이터가 있을 때)
+- 프로그레스 바: 우측 또는 상단에 스크롤 진행률 표시
+- 맨 위로 가기 버튼
+- 부드러운 스크롤 동작 (scroll-behavior: smooth)
+- hover 효과: 카드에 미묘한 scale/shadow 변화
+
+## 반응형
+- 모바일(~768px): 단일 컬럼, 터치 친화적 크기
+- 태블릿(768-1024px): 2컬럼 그리드
+- 데스크탑(1024px+): max-width: 1200px 중앙 정렬, 다중 컬럼 레이아웃
+
+## 품질 체크리스트
+- [ ] 각 섹션이 시각적으로 구분되는가?
+- [ ] 텍스트만 나열하지 않고 카드/표/차트/다이어그램을 활용했는가?
+- [ ] 스크롤 시 애니메이션이 동작하는가?
+- [ ] 색상 팔레트가 일관되고 전문적인가?
+- [ ] 모바일에서도 깨지지 않는가?`,
     isBuiltIn: true
   },
   'presentation': {
@@ -151,27 +193,40 @@ export const BUILTIN_HTML_PROMPTS: Record<Exclude<HtmlSlideStyle, 'custom'>, Sli
     name: '프레젠테이션',
     description: '좌우 화살표로 넘기는 전통적 슬라이드',
     outputFormat: 'html',
-    prompt: `당신은 프레젠테이션 디자인 전문가입니다. 주어진 콘텐츠를 좌우 화살표로 탐색하는 전통적인 슬라이드 형태의 HTML 프레젠테이션으로 변환합니다.
+    prompt: `당신은 세계적 수준의 프레젠테이션 디자이너이자 프론트엔드 엔지니어입니다.
+주어진 콘텐츠를 좌우 화살표로 탐색하는 고품질 HTML 프레젠테이션으로 변환하세요.
 
-주어진 콘텐츠를 분석하여 최소 15슬라이드 이상의 고품질 프레젠테이션을 생성하세요.
+## 출력 규칙 (필수)
+- 반드시 <!DOCTYPE html>로 시작하는 완전한 단일 HTML 파일
+- 외부 CDN 사용 금지 (Chart.js 제외: https://cdn.jsdelivr.net/npm/chart.js). 모든 CSS와 JS는 인라인
+- HTML/CSS/JS 코드만 출력. 설명이나 마크다운 금지
 
-구조:
-1. 타이틀 슬라이드 (1장)
-2. 목차/개요 슬라이드 (1장)
-3. 핵심 개념 소개 (2-3장)
-4. 주요 내용 전개 (5-8장)
-5. 심층 분석 (3-5장)
-6. 결론 및 요약 (1-2장)
+## 슬라이드 구조 (최소 15장)
+1. **타이틀** (1장) — 제목 + 부제 + 그라데이션/패턴 배경. 임팩트 있는 대형 타이포
+2. **목차** (1장) — 번호 매긴 섹션 카드. 클릭하면 해당 슬라이드로 이동
+3. **핵심 개념** (2-3장) — 개념당 1장. 좌측 텍스트 + 우측 비주얼(아이콘/다이어그램)
+4. **주요 내용** (5-8장) — 다양한 레이아웃 혼합: 2컬럼, 카드 그리드, 타임라인, 비교표, 프로세스 플로우
+5. **데이터** (1-2장) — Chart.js 차트. 수치가 없으면 관계/비교를 시각화
+6. **결론** (1-2장) — 핵심 포인트 요약 + 시사점
 
-기술적 요구사항:
-- 단일 HTML 파일로 출력
-- 좌우 화살표 키로 슬라이드 탐색
-- 슬라이드 번호 및 진행률 표시
-- 터치 스와이프 지원
-- 다크/라이트 모드 지원
-- 반응형 디자인 (16:9 비율 유지)
-- 부드러운 슬라이드 전환 애니메이션
-- Chart.js를 활용한 데이터 시각화`,
+## 슬라이드 디자인 원칙
+- **1슬라이드 1메시지**: 텍스트 과적 금지. 핵심만 간결하게
+- **시각 우선**: 모든 슬라이드에 아이콘(SVG/이모지), 도표, 카드 등 비주얼 요소 필수
+- **색상**: 다크모드 기본. CSS 변수로 라이트 전환 지원. 통일된 메인+보조 팔레트
+- **타이포**: 제목 2rem+ 굵게, 본문 1.1rem. 계층 명확히
+- **레이아웃**: 16:9 비율(100vw × 100vh). 충분한 여백. 요소가 화면을 꽉 채우지 않도록
+- **카드/컨테이너**: border-radius: 12px, 미묘한 그림자, 글래스모피즘 효과
+- **전환**: 슬라이드 간 부드러운 fade/slide 애니메이션
+
+## 네비게이션 (필수)
+- 좌우 화살표 키로 이동
+- 터치 스와이프 지원 (모바일)
+- 하단에 슬라이드 번호 (현재/전체) + 프로그레스 바
+- 목차 슬라이드에서 특정 슬라이드로 점프
+
+## 반응형
+- 모바일: 폰트 축소, 컬럼 스택, 터치 영역 확대
+- 데스크탑: 16:9 중앙 배치, 여유로운 레이아웃`,
     isBuiltIn: true
   }
 };
