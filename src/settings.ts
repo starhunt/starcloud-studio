@@ -600,7 +600,7 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName(t().settings.promptModel)
-      .setDesc(t().settings.promptProviderDesc)
+      .setDesc(t().settings.promptModelSelectDesc)
       .addDropdown(dropdown => {
         providerModels.forEach(m => {
           dropdown.addOption(m.id, m.name);

@@ -132,9 +132,10 @@ export const en: TranslationKeys = {
     aiProvider: 'AI Provider',
     defaultAI: 'Default AI',
     defaultAIDesc: 'Select default provider and model',
-    promptProvider: 'Prompt Generation Provider',
-    promptProviderDesc: 'AI provider for image prompt generation',
-    promptModel: 'Prompt Model',
+    promptProvider: 'Default Provider',
+    promptProviderDesc: 'Select the default AI provider',
+    promptModel: 'Default Model',
+    promptModelSelectDesc: 'Select the default AI model',
     promptModelDesc: (suggested: string) => `Model for prompt generation. Suggested: ${suggested}`,
 
     // Dynamic Provider Management

@@ -131,9 +131,10 @@ export const ko = {
     aiProvider: 'AI 프로바이더',
     defaultAI: '기본 AI',
     defaultAIDesc: '기본 프로바이더와 모델 선택',
-    promptProvider: '프롬프트 생성 프로바이더',
-    promptProviderDesc: '이미지 프롬프트 생성에 사용할 AI 프로바이더',
-    promptModel: '프롬프트 모델',
+    promptProvider: '기본 제공자',
+    promptProviderDesc: '기본 AI 제공자를 선택하세요',
+    promptModel: '기본 모델',
+    promptModelSelectDesc: '기본 AI 모델을 선택하세요',
     promptModelDesc: (suggested: string) => `프롬프트 생성에 사용할 모델. 추천: ${suggested}`,
 
     // Dynamic Provider Management
