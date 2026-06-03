@@ -1810,7 +1810,6 @@ export class PptxService {
         this.renderIconTextElement(slide, element as PptxIconTextElement);
         break;
       default:
-        console.warn(`Unknown element type: ${(element as PptxElement).type}`);
     }
   }
 

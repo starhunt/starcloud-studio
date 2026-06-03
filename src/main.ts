@@ -152,11 +152,9 @@ export default class StarCloudStudioPlugin extends Plugin {
       }
     });
 
-    console.log(t().plugin.loaded);
   }
 
   onunload() {
-    console.log(t().plugin.unloaded);
   }
 
   async loadSettings() {
@@ -835,7 +833,6 @@ export default class StarCloudStudioPlugin extends Plugin {
 
         if (attempt < maxRetries && isRetryable) {
           const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-          console.log(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms...`);
           await this.sleep(delay);
         } else {
           throw error;
@@ -994,9 +991,7 @@ export default class StarCloudStudioPlugin extends Plugin {
 
         if (gitResult.success && gitResult.url) {
           githubPagesUrl = gitResult.url;
-          console.log('Slide pushed to GitHub Pages:', githubPagesUrl);
         } else {
-          console.warn('Git push warning:', gitResult.message);
           new Notice(`Git: ${gitResult.message}`);
         }
       }

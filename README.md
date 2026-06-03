@@ -622,3 +622,11 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) - PowerPoint generation library
 - [배움의 달인 (AI·자동화)](https://www.youtube.com/@%EB%B0%B0%EC%9B%80%EC%9D%98%EB%8B%AC%EC%9D%B8-p5v) - AI automation tutorials
 - AI Providers: OpenAI, Google, Anthropic, xAI, z.ai
+
+## Privacy and network use
+
+StarCloud Studio sends selected note content only to the AI/image/audio providers and Google Drive integrations that you configure and invoke. Provider accounts or API keys may be required. The plugin does not collect telemetry.
+
+## License
+
+MIT License. See [LICENSE](./LICENSE).

@@ -39,10 +39,6 @@ export class GitService {
         return { success: false, message: 'Git repository path not configured' };
       }
 
-      console.log('[GitService] Starting commit and push...');
-      console.log('[GitService] Source file path:', filePath);
-      console.log('[GitService] Repo path:', repoPath);
-      console.log('[GitService] Branch:', branch);
 
       // Check if file is already in the repo
       const normalizedFilePath = filePath.replace(/\\/g, '/');
@@ -54,33 +50,25 @@ export class GitService {
       if (isFileInRepo) {
         // File is already in repo, just get relative path
         relativePath = normalizedFilePath.substring(normalizedRepoPath.length + 1);
-        console.log('[GitService] File is in repo, relative path:', relativePath);
       } else {
         // File is not in repo, need to copy it
-        console.log('[GitService] File is NOT in repo, copying...');
         relativePath = await this.copyFileToRepo(filePath, repoPath);
-        console.log('[GitService] Copied to repo, relative path:', relativePath);
       }
 
       // Stage the file
-      console.log('[GitService] Staging file...');
       await this.execGit(`add "${relativePath}"`, repoPath);
 
       // Check if there are changes to commit
       const status = await this.execGit('status --porcelain', repoPath);
-      console.log('[GitService] Status:', status.stdout);
 
       if (!status.stdout.trim()) {
         return { success: true, message: 'No changes to commit', url: this.generatePagesUrl(relativePath) };
       }
 
       // Commit
-      console.log('[GitService] Committing...');
       await this.execGit(`commit -m "${commitMessage}"`, repoPath);
 
       // Push with token authentication
-      console.log('[GitService] Pushing to origin/' + branch + '...');
-      console.log('[GitService] Token configured:', token ? 'yes (length: ' + token.length + ')' : 'no');
 
       let pushSuccess = false;
       let pushError: Error | null = null;
@@ -89,42 +77,31 @@ export class GitService {
       const { stdout: remoteUrl } = await this.execGit('remote get-url origin', repoPath);
       const cleanRemoteUrl = remoteUrl.trim();
       const isSSH = cleanRemoteUrl.startsWith('git@');
-      console.log('[GitService] Remote URL type:', isSSH ? 'SSH' : 'HTTPS');
 
       // For SSH remotes, use standard push (relies on SSH keys)
       // For HTTPS remotes with token, use token-based push
       if (isSSH) {
-        console.log('[GitService] Using SSH push (git push origin ' + branch + ')');
         try {
           const pushResult = await this.execGit(`push origin ${branch}`, repoPath);
-          console.log('[GitService] Push stdout:', pushResult.stdout);
-          console.log('[GitService] Push stderr:', pushResult.stderr);
           pushSuccess = true;
-          console.log('[GitService] SSH push successful');
         } catch (err) {
           pushError = err instanceof Error ? err : new Error(String(err));
           console.error('[GitService] SSH push failed:', pushError.message);
         }
       } else if (token && token.trim()) {
         // HTTPS remote with token
-        console.log('[GitService] Attempting token-based HTTPS push...');
         try {
           await this.pushWithToken(repoPath, branch, token.trim());
           pushSuccess = true;
-          console.log('[GitService] Token-based push successful');
         } catch (err) {
           pushError = err instanceof Error ? err : new Error(String(err));
           console.error('[GitService] Token-based push failed:', pushError.message);
         }
       } else {
         // HTTPS remote without token - try standard push
-        console.log('[GitService] Attempting standard HTTPS push...');
         try {
           const pushResult = await this.execGit(`push origin ${branch}`, repoPath);
-          console.log('[GitService] Push stdout:', pushResult.stdout);
-          console.log('[GitService] Push stderr:', pushResult.stderr);
           pushSuccess = true;
-          console.log('[GitService] Standard push successful');
         } catch (err) {
           pushError = err instanceof Error ? err : new Error(String(err));
           console.error('[GitService] Standard push failed:', pushError.message);
@@ -142,7 +119,6 @@ export class GitService {
 
       // Generate GitHub Pages URL
       const pagesUrl = this.generatePagesUrl(relativePath);
-      console.log('[GitService] Generated URL:', pagesUrl);
 
       return {
         success: true,
@@ -183,10 +159,8 @@ export class GitService {
    */
   private async pushWithToken(repoPath: string, branch: string, token: string): Promise<void> {
     // Get the current remote URL
-    console.log('[GitService] Getting remote URL...');
     const { stdout: remoteUrl } = await this.execGit('remote get-url origin', repoPath);
     const cleanUrl = remoteUrl.trim();
-    console.log('[GitService] Remote URL:', cleanUrl.replace(/\/\/[^@]+@/, '//***@')); // Hide token in log
 
     // Parse the URL and inject token
     let authenticatedUrl: string;
@@ -206,7 +180,6 @@ export class GitService {
       throw new Error(`Unsupported remote URL format: ${cleanUrl}`);
     }
 
-    console.log('[GitService] Pushing with token authentication to branch:', branch);
     // Quote the URL to handle special characters in token
     await this.execGit(`push "${authenticatedUrl}" "${branch}"`, repoPath);
   }
@@ -239,9 +212,6 @@ export class GitService {
     const targetAbsolutePath = path.join(repoPath, targetRelativePath);
     const targetDir = path.dirname(targetAbsolutePath);
 
-    console.log('[GitService] Copying file:');
-    console.log('[GitService]   Source:', sourcePath);
-    console.log('[GitService]   Target:', targetAbsolutePath);
 
     // Ensure target directory exists
     await mkdirAsync(targetDir, { recursive: true });
@@ -249,7 +219,6 @@ export class GitService {
     // Copy the file
     await copyFileAsync(sourcePath, targetAbsolutePath);
 
-    console.log('[GitService] File copied successfully');
 
     return targetRelativePath;
   }

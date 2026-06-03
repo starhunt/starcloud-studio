@@ -305,7 +305,6 @@ export class TTSService {
       // In production, you might want to use a library like lamejs
       outputBuffer = this.pcmToWav(pcmBuffer, 24000, 1, 16);
       mimeType = 'audio/wav';
-      console.warn('MP3 encoding not implemented, using WAV format');
     }
 
     // Estimate duration based on PCM data

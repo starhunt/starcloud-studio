@@ -259,7 +259,6 @@ export class DriveUploadService {
   private async ensureValidToken(): Promise<string> {
     if (this.config.tokenExpiresAt && this.config.refreshToken) {
       if (this.oauthFlow.isTokenExpired(this.config.tokenExpiresAt)) {
-        console.debug('Access token expired, refreshing...');
         try {
           const newTokens = await this.oauthFlow.refreshAccessToken(this.config.refreshToken);
 
