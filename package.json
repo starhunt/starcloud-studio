@@ -1,6 +1,6 @@
 {
   "name": "starcloud-studio",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "description": "Create AI-powered knowledge posters, slide decks, and audio from your notes, with Google Drive export.",
   "main": "main.js",
   "scripts": {
@@ -26,7 +26,6 @@
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "^5.29.0",
     "@typescript-eslint/parser": "^5.29.0",
-    "builtin-modules": "^3.3.0",
     "esbuild": "0.17.3",
     "obsidian": "latest",
     "tslib": "2.4.0",
