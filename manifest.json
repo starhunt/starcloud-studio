@@ -1,7 +1,7 @@
 {
   "id": "starcloud-studio",
   "name": "StarCloud Studio",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "minAppVersion": "1.0.0",
   "description": "Create AI-powered knowledge posters, slide decks, and audio from your notes, with Google Drive export.",
   "author": "StarHunt",

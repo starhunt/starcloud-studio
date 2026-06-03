@@ -1,6 +1,6 @@
 {
   "name": "starcloud-studio",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "description": "Create AI-powered knowledge posters, slide decks, and audio from your notes, with Google Drive export.",
   "main": "main.js",
   "scripts": {
