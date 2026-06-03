@@ -65,9 +65,7 @@ export default class StarCloudStudioPlugin extends Plugin {
     await this.loadSettings();
 
     // Initialize i18n
-    const obsidianLocale = (this.app as any).locale
-      || window.localStorage.getItem('language')
-      || 'ko';
+    const obsidianLocale = (this.app as any).locale || 'ko';
     setDetectedLocale(obsidianLocale);
 
     if (this.settings.language && this.settings.language !== 'auto') {

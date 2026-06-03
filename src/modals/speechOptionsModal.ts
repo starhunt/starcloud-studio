@@ -668,10 +668,10 @@ export class SpeechOptionsModal extends Modal {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
       }
 
       .starcloud-speech-options .template-label {
@@ -679,7 +679,7 @@ export class SpeechOptionsModal extends Modal {
         line-height: 1;
         display: inline-flex;
         align-items: center;
-        background: none !important;
+        background: none;
       }
 
       /* Prompt Preview Section */

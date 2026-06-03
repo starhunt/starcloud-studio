@@ -11,6 +11,13 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 const builtins = [...builtinModules, ...builtinModules.map((moduleName) => `node:${moduleName}`)];
+const aliasPlugin = {
+	name: "community-review-safe-aliases",
+	setup(build) {
+		build.onResolve({ filter: /^setimmediate$/ }, () => ({ path: new URL("./src/shims/setimmediate.ts", import.meta.url).pathname }));
+		build.onResolve({ filter: /^immediate$/ }, () => ({ path: new URL("./src/shims/immediate.ts", import.meta.url).pathname }));
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -39,6 +46,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: "main.js",
+	plugins: [aliasPlugin],
 });
 
 if (prod) {

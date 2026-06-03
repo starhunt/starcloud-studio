@@ -91,7 +91,7 @@ export class StarCloudStudioSettingTab extends PluginSettingTab {
     const style = document.createElement('style');
     style.textContent = `
       .starcloud-settings {
-        padding: 0 !important;
+        padding: 0;
       }
 
       .starcloud-settings .settings-header {
